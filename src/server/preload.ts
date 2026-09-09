@@ -8,12 +8,24 @@ import {
   handleProductionAvailability,
   handleProductionCreateBooking,
 } from "../services/productionBookingHandlers.js";
+import {
+  handleProductionCheckInBooking,
+  handleProductionCancelBooking,
+  handleProductionExtendSession,
+  handleProductionEndSession,
+  handleProductionMyActiveSession,
+} from "../services/productionSessionHandlers.js";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
 const productionOverrides: Record<string, any> = {
   "GET /api/stations": handleProductionGetStations,
   "GET /api/stations/:id/availability": handleProductionAvailability,
   "POST /api/bookings": handleProductionCreateBooking,
+  "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
+  "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
+  "POST /api/sessions/:id/extend": handleProductionExtendSession,
+  "POST /api/sessions/:id/end": handleProductionEndSession,
+  "GET /api/sessions/me": handleProductionMyActiveSession,
 };
 
 for (const method of methods) {
