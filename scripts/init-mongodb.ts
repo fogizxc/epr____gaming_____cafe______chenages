@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { getMongoDb, closeMongoDb } from "../src/server/mongodb.js";
+import { INITIAL_SYSTEMS, INITIAL_PRICING_RULES } from "../src/data/initialData.js";
 
 const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: Record<string, unknown> }>> = {
   users: [
@@ -25,6 +26,7 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
     { key: { systemId: 1, date: 1, startTime: 1, endTime: 1 } },
     { key: { customerId: 1, bookingStatus: 1, date: -1 } },
     { key: { bookingStatus: 1, date: 1 } },
+    { key: { customerId: 1, idempotencyKey: 1 }, options: { unique: true, sparse: true } },
   ],
   active_sessions: [
     { key: { systemId: 1, status: 1 } },
@@ -72,16 +74,32 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
   business_settings: [{ key: { key: 1 }, options: { unique: true } }],
 };
 
+async function seedOperationalData() {
+  const db = await getMongoDb();
+  const now = new Date();
+  const systems = db.collection("gaming_systems");
+  for (const system of INITIAL_SYSTEMS as any[]) {
+    await systems.updateOne(
+      { id: system.id },
+      { $setOnInsert: { ...system, bookingVersion: 0, status: system.status === "ACTIVE" ? "AVAILABLE" : system.status, createdAt: now }, $set: { updatedAt: now } },
+      { upsert: true },
+    );
+  }
+  const pricing = db.collection("pricing_rules");
+  for (const rule of INITIAL_PRICING_RULES as any[]) {
+    await pricing.updateOne({ service: rule.service }, { $setOnInsert: { ...rule, createdAt: now }, $set: { updatedAt: now } }, { upsert: true });
+  }
+}
+
 async function main() {
   const db = await getMongoDb();
   for (const [collectionName, indexes] of Object.entries(indexPlan)) {
     const collection = db.collection(collectionName);
-    for (const index of indexes) {
-      await collection.createIndex(index.key, index.options as any);
-    }
+    for (const index of indexes) await collection.createIndex(index.key, index.options as any);
     console.log(`MongoDB: ${collectionName} indexes ready (${indexes.length})`);
   }
-  console.log(`MongoDB Atlas bootstrap complete: ${Object.keys(indexPlan).length} collections prepared.`);
+  await seedOperationalData();
+  console.log(`MongoDB Atlas bootstrap complete: ${Object.keys(indexPlan).length} collections prepared and operational seed data verified.`);
 }
 
 main().catch((error) => { console.error("MongoDB bootstrap failed:", error); process.exitCode = 1; }).finally(() => closeMongoDb());
