@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #050505;
+    color: #e0e0e0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* Fuzzy glow & custom effects */
+.fuzzy-glow {
+  box-shadow: 0 0 20px -3px rgba(220, 38, 38, 0.35), 0 0 15px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(14px);
+}
+
+.fuzzy-glow-blue {
+  box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.35), 0 0 15px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(14px);
+}
+
+.fuzzy-glow-green {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.35), 0 0 15px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(14px);
+}
+
+.fuzzy-glow-purple {
+  box-shadow: 0 0 20px -3px rgba(168, 85, 247, 0.35), 0 0 15px rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(14px);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #050505;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Auto-sliding marquee track */
+@keyframes autoSlideTrack {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.sliding-track-content {
+  display: flex;
+  width: max-content;
+  animation: autoSlideTrack 30s linear infinite;
+}
+
+.sliding-track-container:hover .sliding-track-content {
+  animation-play-state: paused;
+}
+
+/* Print styles for invoices */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-invoice, #printable-invoice * {
+    visibility: visible;
+  }
+  #printable-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
+}
+

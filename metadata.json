@@ -1,0 +1,6 @@
+{
+  "name": "Bytes & Brew Gaming Café",
+  "description": "Commercial Gaming Café Management System for Bytes & Brew, featuring high-performance gaming rigs, console lounges, specialty artisan coffee, live floor map, real-time sessions, and tournament engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
