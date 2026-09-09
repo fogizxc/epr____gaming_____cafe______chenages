@@ -7,11 +7,13 @@ const PUBLIC_EXACT = new Set([
   "/api/auth/register",
   "/api/auth/login",
   "/api/auth/refresh",
+  "/api/payments/webhook",
 ]);
 
 const CUSTOMER_PREFIXES = [
   "/api/me", "/api/stations", "/api/bookings", "/api/sessions", "/api/wallet",
   "/api/membership", "/api/rewards", "/api/referrals", "/api/fnb", "/api/support",
+  "/api/payments",
 ];
 
 const STAFF_PREFIXES = ["/api/employee/"];
