@@ -3,23 +3,10 @@ import { apiSecurityPolicy } from "./security.js";
 import { registerAuthRoutes } from "./authRoutes.js";
 import { ensureAuthIndexes } from "./auth.js";
 import { getMongoDb } from "./mongodb.js";
-import {
-  handleProductionGetStations,
-  handleProductionAvailability,
-  handleProductionCreateBooking,
-} from "../services/productionBookingHandlers.js";
-import {
-  handleProductionCheckInBooking,
-  handleProductionCancelBooking,
-  handleProductionExtendSession,
-  handleProductionEndSession,
-  handleProductionMyActiveSession,
-} from "../services/productionSessionHandlers.js";
-import {
-  handleProductionCreatePaymentOrder,
-  handleProductionVerifyPayment,
-  handleProductionPaymentWebhook,
-} from "../services/productionPaymentHandlers.js";
+import { handleProductionGetStations, handleProductionAvailability, handleProductionCreateBooking } from "../services/productionBookingHandlers.js";
+import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
+import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment, handleProductionPaymentWebhook } from "../services/productionPaymentHandlers.js";
+import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
 const productionOverrides: Record<string, any> = {
@@ -34,6 +21,10 @@ const productionOverrides: Record<string, any> = {
   "POST /api/payments/create-order": handleProductionCreatePaymentOrder,
   "POST /api/payments/verify": handleProductionVerifyPayment,
   "POST /api/payments/webhook": handleProductionPaymentWebhook,
+  "POST /api/invoices": handleProductionCreateInvoice,
+  "GET /api/wallet/balance": handleProductionWalletBalance,
+  "POST /api/wallet/credit": handleProductionWalletCredit,
+  "POST /api/refunds": handleProductionRequestRefund,
 };
 
 for (const method of methods) {
@@ -53,13 +44,8 @@ const originalListen = (express.application as any).listen;
 (express.application as any).listen = function (...args: any[]) {
   registerAuthRoutes(this);
   this.get("/api/ready", async (_req: any, res: any) => {
-    try {
-      const db = await getMongoDb();
-      await db.command({ ping: 1 });
-      return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } });
-    } catch {
-      return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } });
-    }
+    try { const db = await getMongoDb(); await db.command({ ping: 1 }); return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } }); }
+    catch { return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } }); }
   });
   void ensureAuthIndexes().catch((error) => console.error("Authentication index bootstrap failed:", error));
   return originalListen.apply(this, args);
