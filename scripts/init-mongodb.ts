@@ -31,6 +31,8 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
   active_sessions: [
     { key: { systemId: 1, status: 1 } },
     { key: { customerId: 1, status: 1 } },
+    { key: { systemId: 1, status: 1 }, options: { unique: true, partialFilterExpression: { status: "ACTIVE" } } },
+    { key: { bookingId: 1, status: 1 } },
   ],
   invoices: [
     { key: { invoiceNumber: 1 }, options: { unique: true, sparse: true } },
@@ -39,7 +41,9 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
   ],
   payments: [
     { key: { provider: 1, providerPaymentId: 1 }, options: { unique: true, sparse: true } },
+    { key: { provider: 1, providerOrderId: 1 }, options: { unique: true, sparse: true } },
     { key: { customerId: 1, createdAt: -1 } },
+    { key: { customerId: 1, idempotencyKey: 1 }, options: { unique: true, sparse: true } },
   ],
   wallet_transactions: [
     { key: { customerId: 1, createdAt: -1 } },
@@ -79,11 +83,7 @@ async function seedOperationalData() {
   const now = new Date();
   const systems = db.collection("gaming_systems");
   for (const system of INITIAL_SYSTEMS as any[]) {
-    await systems.updateOne(
-      { id: system.id },
-      { $setOnInsert: { ...system, bookingVersion: 0, status: system.status === "ACTIVE" ? "AVAILABLE" : system.status, createdAt: now }, $set: { updatedAt: now } },
-      { upsert: true },
-    );
+    await systems.updateOne({ id: system.id }, { $setOnInsert: { ...system, bookingVersion: 0, status: system.status === "ACTIVE" ? "AVAILABLE" : system.status, createdAt: now }, $set: { updatedAt: now } }, { upsert: true });
   }
   const pricing = db.collection("pricing_rules");
   for (const rule of INITIAL_PRICING_RULES as any[]) {
