@@ -12,10 +12,15 @@ export async function getMongoDb(): Promise<Db> {
 
   connectPromise = (async () => {
     client = new MongoClient(uri, {
-      maxPoolSize: 20,
-      minPoolSize: 2,
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
+      appName: process.env.MONGODB_APP_NAME?.trim() || 'gaming-cafe-epr',
+      maxPoolSize: Number(process.env.MONGODB_MAX_POOL_SIZE || 30),
+      minPoolSize: Number(process.env.MONGODB_MIN_POOL_SIZE || 2),
+      maxIdleTimeMS: Number(process.env.MONGODB_MAX_IDLE_TIME_MS || 60000),
+      serverSelectionTimeoutMS: Number(process.env.MONGODB_SERVER_SELECTION_TIMEOUT_MS || 5000),
+      connectTimeoutMS: Number(process.env.MONGODB_CONNECT_TIMEOUT_MS || 5000),
+      socketTimeoutMS: Number(process.env.MONGODB_SOCKET_TIMEOUT_MS || 20000),
+      waitQueueTimeoutMS: Number(process.env.MONGODB_WAIT_QUEUE_TIMEOUT_MS || 10000),
+      retryReads: true,
       retryWrites: true,
     });
     await client.connect();
