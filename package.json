@@ -8,6 +8,7 @@
     "build": "vite build && esbuild src/server/preload.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/preload.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node --import ./dist/preload.mjs dist/server.cjs",
     "db:init": "tsx scripts/init-mongodb.ts",
+    "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
@@ -16,6 +17,8 @@
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/nodemailer": "^8.0.1",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^5.0.4",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
