@@ -15,6 +15,11 @@ import {
   handleProductionEndSession,
   handleProductionMyActiveSession,
 } from "../services/productionSessionHandlers.js";
+import {
+  handleProductionCreatePaymentOrder,
+  handleProductionVerifyPayment,
+  handleProductionPaymentWebhook,
+} from "../services/productionPaymentHandlers.js";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
 const productionOverrides: Record<string, any> = {
@@ -26,6 +31,9 @@ const productionOverrides: Record<string, any> = {
   "POST /api/sessions/:id/extend": handleProductionExtendSession,
   "POST /api/sessions/:id/end": handleProductionEndSession,
   "GET /api/sessions/me": handleProductionMyActiveSession,
+  "POST /api/payments/create-order": handleProductionCreatePaymentOrder,
+  "POST /api/payments/verify": handleProductionVerifyPayment,
+  "POST /api/payments/webhook": handleProductionPaymentWebhook,
 };
 
 for (const method of methods) {
