@@ -8,6 +8,7 @@ import { handleProductionCheckInBooking, handleProductionCancelBooking, handlePr
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment, handleProductionPaymentWebhook } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
 import { employeeDashboard, getShift, startShift, endShift, cashLedger, addCashLedger, walkIn, checkIn, extendSession, transferSession, endSession, waitlist, addWaitlist, assignWaitlist, removeWaitlist, maintenance, reportMaintenance, updateMaintenance, alerts, resolveAlert, activity, refunds, requestRefund, processRefund, customers, createCustomer, fnbOrder } from "../services/productionEmployeeHandlers.js";
+import { registerAdminRoutes } from "../services/productionAdminHandlers.js";
 
 const originalJson = (express as any).json;
 (express as any).json = function (options: any = {}) {
@@ -77,6 +78,7 @@ for (const method of methods) {
 const originalListen = (express.application as any).listen;
 (express.application as any).listen = function (...args: any[]) {
   registerAuthRoutes(this);
+  registerAdminRoutes(this);
   this.get("/api/ready", async (_req: any, res: any) => {
     try { const db = await getMongoDb(); await db.command({ ping: 1 }); return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } }); }
     catch { return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } }); }
