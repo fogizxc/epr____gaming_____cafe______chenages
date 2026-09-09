@@ -7,11 +7,8 @@ let connectPromise: Promise<Db> | null = null;
 export async function getMongoDb(): Promise<Db> {
   if (db) return db;
   if (connectPromise) return connectPromise;
-
   const uri = process.env.MONGODB_URI?.trim();
-  if (!uri) {
-    throw new Error('MONGODB_URI is not configured');
-  }
+  if (!uri) throw new Error('MONGODB_URI is not configured');
 
   connectPromise = (async () => {
     client = new MongoClient(uri, {
@@ -21,7 +18,6 @@ export async function getMongoDb(): Promise<Db> {
       connectTimeoutMS: 5000,
       retryWrites: true,
     });
-
     await client.connect();
     await client.db('admin').command({ ping: 1 });
     db = client.db(process.env.MONGODB_DB_NAME?.trim() || 'bytes_brew_epr');
@@ -37,6 +33,8 @@ export async function getMongoDb(): Promise<Db> {
     throw error;
   }
 }
+
+export const getDb = getMongoDb;
 
 export async function closeMongoDb(): Promise<void> {
   if (client) await client.close();
