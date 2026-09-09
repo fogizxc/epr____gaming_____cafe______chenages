@@ -2,13 +2,10 @@ import crypto from "node:crypto";
 import { getMongoDb, getMongoClient } from "./mongodb.js";
 
 const TICK_MS = 30_000;
-const CHECKIN_GRACE_MS = Math.max(0, Number(process.env.BOOKING_CHECKIN_GRACE_MINUTES ?? 15)) * 60_000;
 const NO_SHOW_GRACE_MS = Math.max(0, Number(process.env.BOOKING_NO_SHOW_GRACE_MINUTES ?? 15)) * 60_000;
 let started = false;
 
 function businessDateTime(date: string, time: string) {
-  // Current business default is India Standard Time. Keep the offset explicit so
-  // booking date/time strings do not depend on the host machine timezone.
   const timezone = String(process.env.BUSINESS_TIMEZONE || "Asia/Kolkata");
   if (timezone === "Asia/Kolkata") return new Date(`${date}T${time}:00+05:30`);
   return new Date(`${date}T${time}:00Z`);
@@ -61,8 +58,6 @@ async function lifecycleTick() {
   const db = await getMongoDb();
   const now = new Date();
 
-  // A reservation becomes a NO-SHOW after its scheduled start plus the configured
-  // check-in window. The update is conditional, so multiple app instances are safe.
   const upcoming = await db.collection("bookings")
     .find({ bookingStatus: "UPCOMING" })
     .project({ _id: 1, id: 1, date: 1, startTime: 1 })
@@ -80,8 +75,6 @@ async function lifecycleTick() {
     );
   }
 
-  // Automatically complete expired active sessions. Every mutation is conditional
-  // and transactional, making this safe when several Node instances are running.
   const expired = await db.collection("active_sessions")
     .find({ status: "ACTIVE", scheduledEndAt: { $lte: now } })
     .project({ _id: 1, id: 1, bookingId: 1, systemId: 1 })
