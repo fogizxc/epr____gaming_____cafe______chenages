@@ -24,25 +24,11 @@ export async function getMongoDb(): Promise<Db> {
     return db;
   })();
 
-  try {
-    return await connectPromise;
-  } catch (error) {
-    connectPromise = null;
-    client = null;
-    db = null;
-    throw error;
-  }
+  try { return await connectPromise; }
+  catch (error) { connectPromise = null; client = null; db = null; throw error; }
 }
 
 export const getDb = getMongoDb;
-
-export async function closeMongoDb(): Promise<void> {
-  if (client) await client.close();
-  client = null;
-  db = null;
-  connectPromise = null;
-}
-
-export function isMongoConfigured(): boolean {
-  return Boolean(process.env.MONGODB_URI?.trim());
-}
+export function getMongoClient(): MongoClient | null { return client; }
+export async function closeMongoDb(): Promise<void> { if (client) await client.close(); client = null; db = null; connectPromise = null; }
+export function isMongoConfigured(): boolean { return Boolean(process.env.MONGODB_URI?.trim()); }
