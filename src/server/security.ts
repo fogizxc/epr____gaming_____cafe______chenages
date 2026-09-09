@@ -11,6 +11,7 @@ const PUBLIC_EXACT = new Set([
   "/api/membership/payment-webhook",
   "/api/fnb/payment-webhook",
   "/api/tournaments/payment-webhook",
+  "/api/integrations/google-forms/tournament-response",
   "/api/games",
 ]);
 const PUBLIC_PREFIXES=["/api/games/"];
