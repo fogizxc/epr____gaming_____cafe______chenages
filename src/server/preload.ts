@@ -7,19 +7,12 @@ import { handleProductionGetStations, handleProductionAvailability, handleProduc
 import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment, handleProductionPaymentWebhook } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
+import { employeeDashboard, getShift, startShift, endShift, cashLedger, addCashLedger, walkIn, checkIn, extendSession, transferSession, endSession, waitlist, addWaitlist, assignWaitlist, removeWaitlist, maintenance, reportMaintenance, updateMaintenance, alerts, resolveAlert, activity, refunds, requestRefund, processRefund, customers, createCustomer, fnbOrder } from "../services/productionEmployeeHandlers.js";
 
-// Razorpay signs the exact request bytes. Wrap Express's JSON parser before the
-// application creates it so every JSON request retains those bytes for webhook verification.
 const originalJson = (express as any).json;
 (express as any).json = function (options: any = {}) {
   const callerVerify = options.verify;
-  return originalJson({
-    ...options,
-    verify: (req: any, res: any, buf: Buffer, encoding: string) => {
-      req.rawBody = Buffer.from(buf);
-      if (typeof callerVerify === "function") callerVerify(req, res, buf, encoding);
-    },
-  });
+  return originalJson({ ...options, verify: (req: any, res: any, buf: Buffer, encoding: string) => { req.rawBody = Buffer.from(buf); if (typeof callerVerify === "function") callerVerify(req, res, buf, encoding); } });
 };
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
@@ -39,6 +32,33 @@ const productionOverrides: Record<string, any> = {
   "GET /api/wallet/balance": handleProductionWalletBalance,
   "POST /api/wallet/credit": handleProductionWalletCredit,
   "POST /api/refunds": handleProductionRequestRefund,
+  "GET /api/employee/dashboard": employeeDashboard,
+  "GET /api/employee/shift": getShift,
+  "POST /api/employee/shift/start": startShift,
+  "POST /api/employee/shift/end": endShift,
+  "GET /api/employee/cash-ledger": cashLedger,
+  "POST /api/employee/cash-ledger/entry": addCashLedger,
+  "POST /api/employee/walk-in": walkIn,
+  "POST /api/employee/bookings/check-in": checkIn,
+  "POST /api/employee/sessions/:sessionId/extend": extendSession,
+  "POST /api/employee/sessions/:sessionId/transfer": transferSession,
+  "POST /api/employee/sessions/:sessionId/end": endSession,
+  "GET /api/employee/waitlist": waitlist,
+  "POST /api/employee/waitlist/add": addWaitlist,
+  "POST /api/employee/waitlist/:waitlistId/assign": assignWaitlist,
+  "DELETE /api/employee/waitlist/:waitlistId": removeWaitlist,
+  "GET /api/employee/maintenance": maintenance,
+  "POST /api/employee/maintenance/report": reportMaintenance,
+  "POST /api/employee/maintenance/:ticketId/status": updateMaintenance,
+  "GET /api/employee/alerts": alerts,
+  "POST /api/employee/alerts/:alertId/resolve": resolveAlert,
+  "GET /api/employee/activity": activity,
+  "GET /api/employee/refunds": refunds,
+  "POST /api/employee/refunds/request": requestRefund,
+  "POST /api/employee/refunds/:refundId/action": processRefund,
+  "GET /api/employee/customers": customers,
+  "POST /api/employee/customers": createCustomer,
+  "POST /api/employee/fnb/order": fnbOrder,
 };
 
 for (const method of methods) {
