@@ -1,9 +1,10 @@
+import type { ClientSession, Db } from "mongodb";
 import { getMongoDb } from "../server/mongodb.js";
 
 export type FinancialEntry = {
-  transactionId: string;
+  id: string;
   type: "SALE" | "REFUND" | "WALLET_CREDIT" | "WALLET_DEBIT" | "CASH_IN" | "CASH_OUT";
-  sourceType: "GAMING" | "FNB" | "MEMBERSHIP" | "TOURNAMENT" | "WALLET" | "REFUND" | "CASH";
+  source: "GAMING" | "FNB" | "MEMBERSHIP" | "TOURNAMENT" | "WALLET" | "REFUND" | "CASH";
   sourceId: string;
   customerId?: string;
   paymentId?: string;
@@ -15,12 +16,12 @@ export type FinancialEntry = {
   metadata?: Record<string, unknown>;
 };
 
-export async function recordFinancialTransaction(entry: FinancialEntry) {
-  if (!entry.transactionId || !entry.sourceId) throw new Error("FINANCIAL_ENTRY_ID_REQUIRED");
+export async function recordFinancialTransaction(entry: FinancialEntry, options?: { db?: Db; session?: ClientSession }) {
+  if (!entry.id || !entry.sourceId) throw new Error("FINANCIAL_ENTRY_ID_REQUIRED");
   if (!Number.isSafeInteger(entry.amountPaise) || entry.amountPaise < 0) throw new Error("INVALID_FINANCIAL_AMOUNT");
-  const db = await getMongoDb();
+  const db = options?.db || await getMongoDb();
   try {
-    await db.collection("financial_ledger").insertOne({ ...entry, immutable: true });
+    await db.collection("financial_ledger").insertOne({ ...entry, transactionId: entry.id, immutable: true }, { session: options?.session });
   } catch (error: any) {
     if (error?.code === 11000) return { duplicate: true };
     throw error;
@@ -28,7 +29,7 @@ export async function recordFinancialTransaction(entry: FinancialEntry) {
   return { duplicate: false };
 }
 
-export async function financialEntryExists(transactionId: string) {
-  const db = await getMongoDb();
-  return Boolean(await db.collection("financial_ledger").findOne({ transactionId }, { projection: { _id: 1 } }));
+export async function financialEntryExists(id: string, db?: Db) {
+  const database = db || await getMongoDb();
+  return Boolean(await database.collection("financial_ledger").findOne({ transactionId: id }, { projection: { _id: 1 } }));
 }
