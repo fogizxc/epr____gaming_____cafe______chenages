@@ -11,6 +11,7 @@
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "financial:reconcile": "tsx scripts/reconcile-financial-ledger.ts",
     "test:production": "tsx scripts/production-integration-check.ts",
+    "test:mongodb": "tsx scripts/mongodb-production-integration.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
@@ -29,10 +30,10 @@
     "pdfkit": "^0.17.2",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "@types/express": "^4.17.21"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/pdfkit": "^0.13.8",
     "autoprefixer": "^10.4.21",
