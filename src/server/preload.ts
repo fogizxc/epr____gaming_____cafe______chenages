@@ -3,14 +3,26 @@ import { apiSecurityPolicy } from "./security.js";
 import { registerAuthRoutes } from "./authRoutes.js";
 import { ensureAuthIndexes } from "./auth.js";
 import { getMongoDb } from "./mongodb.js";
+import {
+  handleProductionGetStations,
+  handleProductionAvailability,
+  handleProductionCreateBooking,
+} from "../services/productionBookingHandlers.js";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
+const productionOverrides: Record<string, any> = {
+  "GET /api/stations": handleProductionGetStations,
+  "GET /api/stations/:id/availability": handleProductionAvailability,
+  "POST /api/bookings": handleProductionCreateBooking,
+};
 
 for (const method of methods) {
   const original = (express.application as any)[method];
   if (typeof original !== "function") continue;
   (express.application as any)[method] = function (path: any, ...handlers: any[]) {
     if (typeof path === "string" && path.startsWith("/api/") && !path.startsWith("/api/auth/")) {
+      const override = productionOverrides[`${method.toUpperCase()} ${path}`];
+      if (override) return original.call(this, path, apiSecurityPolicy, override);
       return original.call(this, path, apiSecurityPolicy, ...handlers);
     }
     return original.call(this, path, ...handlers);
