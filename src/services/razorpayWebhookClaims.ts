@@ -6,6 +6,7 @@ export type WebhookClaim = {
   duplicate: boolean;
   key: string;
   claimId?: string;
+  attempts?: number;
 };
 
 /**
@@ -16,34 +17,40 @@ export type WebhookClaim = {
 export async function claimRazorpayWebhook(db: Db, key: string, metadata: Record<string, unknown> = {}): Promise<WebhookClaim> {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - CLAIM_TIMEOUT_MS);
-  const result = await db.collection("razorpay_webhook_events").findOneAndUpdate(
-    {
-      key,
-      $or: [
-        { status: { $exists: false } },
-        { status: "FAILED" },
-        { status: "PROCESSING", processingAt: { $lt: staleBefore } },
-      ],
-    },
-    {
-      $set: {
-        status: "PROCESSING",
-        processingAt: now,
-        lastAttemptAt: now,
-        updatedAt: now,
-        ...metadata,
+  try {
+    const result = await db.collection("razorpay_webhook_events").findOneAndUpdate(
+      {
+        key,
+        $or: [
+          { status: { $exists: false } },
+          { status: "FAILED" },
+          { status: "PROCESSING", processingAt: { $lt: staleBefore } },
+        ],
       },
-      $setOnInsert: { key, receivedAt: now, attempts: 0 },
-      $inc: { attempts: 1 },
-    },
-    { upsert: true, returnDocument: "after" },
-  );
-
-  if (result?.value?.status === "PROCESSING" && result.value.processingAt?.getTime?.() === now.getTime()) {
-    return { duplicate: false, key, claimId: String(result.value._id) };
+      {
+        $set: {
+          status: "PROCESSING",
+          processingAt: now,
+          lastAttemptAt: now,
+          updatedAt: now,
+          ...metadata,
+        },
+        $setOnInsert: { key, receivedAt: now, attempts: 0 },
+        $inc: { attempts: 1 },
+      },
+      { upsert: true, returnDocument: "after" },
+    );
+    const attempts = Number(result?.value?.attempts || 1);
+    if (result?.value?.status === "PROCESSING" && result.value.processingAt?.getTime?.() === now.getTime()) {
+      return { duplicate: false, key, attempts, claimId: String(result.value._id) };
+    }
+    return { duplicate: true, key, attempts };
+  } catch (error: any) {
+    // A concurrent request may win the upsert. Treat duplicate-key races as
+    // an ordinary duplicate delivery instead of turning them into 500s.
+    if (error?.code === 11000) return { duplicate: true, key };
+    throw error;
   }
-
-  return { duplicate: true, key };
 }
 
 export async function completeRazorpayWebhook(db: Db, key: string, metadata: Record<string, unknown> = {}) {
