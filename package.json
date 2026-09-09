@@ -10,6 +10,7 @@
     "db:init": "tsx scripts/init-mongodb.ts",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "financial:reconcile": "tsx scripts/reconcile-financial-ledger.ts",
+    "financial:reconcile-razorpay": "tsx scripts/reconcile-razorpay-captures.ts",
     "test:production": "tsx scripts/production-integration-check.ts",
     "test:mongodb": "tsx scripts/mongodb-production-integration.ts",
     "preview": "vite preview",
@@ -39,7 +40,6 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
     "typescript": "~5.8.2"
   }
 }
