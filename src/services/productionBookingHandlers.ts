@@ -43,11 +43,13 @@ function pricingFor(station: any, rule: any, date: string, startTime: string): n
 
 async function ensureStationSeeded() {
   const db = await getMongoDb();
-  if (await db.collection("gaming_systems").estimatedDocumentCount() > 0) return;
-  const now = new Date();
-  const documents = INITIAL_SYSTEMS.map((s: any) => ({ ...s, bookingVersion: 0, status: s.status === "ACTIVE" ? "AVAILABLE" : s.status, createdAt: now, updatedAt: now }));
-  if (documents.length) await db.collection("gaming_systems").insertMany(documents, { ordered: false });
+  if (await db.collection("gaming_systems").estimatedDocumentCount() === 0) {
+    const now = new Date();
+    const documents = INITIAL_SYSTEMS.map((s: any) => ({ ...s, bookingVersion: 0, status: s.status === "ACTIVE" ? "AVAILABLE" : s.status, createdAt: now, updatedAt: now }));
+    if (documents.length) await db.collection("gaming_systems").insertMany(documents, { ordered: false });
+  }
   if (await db.collection("pricing_rules").estimatedDocumentCount() === 0) {
+    const now = new Date();
     await db.collection("pricing_rules").insertMany(INITIAL_PRICING_RULES.map((p: any) => ({ ...p, createdAt: now, updatedAt: now })));
   }
 }
@@ -55,7 +57,8 @@ async function ensureStationSeeded() {
 export async function handleProductionGetStations(_req: Request, res: Response) {
   try {
     await ensureStationSeeded();
-    const stations = await (await getMongoDb()).collection("gaming_systems").find({}).sort({ category: 1, name: 1 }).toArray();
+    const db = await getMongoDb();
+    const stations = await db.collection("gaming_systems").find({}).sort({ category: 1, name: 1 }).toArray();
     return res.json({ success: true, stations: stations.map(sanitizeStation) });
   } catch (error) {
     console.error("stations/list", error);
@@ -77,13 +80,17 @@ export async function handleProductionAvailability(req: Request, res: Response) 
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const stationUnavailableForDate = ["MAINTENANCE", "OFFLINE"].includes(String(station.status));
+    const activeNow = date === today && String(station.status) === "ACTIVE";
+    const activeEnd = Number(station.sessionEndTime || 0);
     const slots = [];
     for (let start = OPEN_MINUTES; start + durationMinutes <= CLOSE_MINUTES; start += SLOT_MINUTES) {
       const end = start + durationMinutes;
       const conflict = bookings.some((b: any) => { const bs = timeToMinutes(String(b.startTime)); const be = timeToMinutes(String(b.endTime)); return bs !== null && be !== null && start < be && end > bs; });
       const past = date === today && start < nowMinutes - 5;
-      const unavailable = ["MAINTENANCE", "OFFLINE", "ACTIVE"].includes(String(station.status));
-      slots.push({ slot: minutesToTime(start), endTime: minutesToTime(end), available: !conflict && !past && !unavailable, status: unavailable ? String(station.status) : past ? "PAST" : conflict ? "BOOKED" : "AVAILABLE", reason: unavailable ? "Station is unavailable" : past ? "Time slot has passed" : conflict ? "Reserved by another customer" : undefined });
+      const activeCollision = activeNow && activeEnd > 0 && new Date(`${date}T${minutesToTime(start)}:00`).getTime() < activeEnd;
+      const unavailable = stationUnavailableForDate || activeCollision;
+      slots.push({ slot: minutesToTime(start), endTime: minutesToTime(end), available: !conflict && !past && !unavailable, status: stationUnavailableForDate ? String(station.status) : past ? "PAST" : activeCollision ? "ACTIVE_SESSION" : conflict ? "BOOKED" : "AVAILABLE", reason: stationUnavailableForDate ? "Station is unavailable" : past ? "Time slot has passed" : activeCollision ? "Station is currently occupied" : conflict ? "Reserved by another customer" : undefined });
     }
     return res.json({ success: true, station: sanitizeStation(station), date, slots });
   } catch (error) {
@@ -126,17 +133,12 @@ export async function handleProductionCreateBooking(req: Request, res: Response)
       const customer = ObjectId.isValid(authReq.user!.id) ? await db.collection("users").findOne({ _id: new ObjectId(authReq.user!.id) }, { session }) : null;
       const booking = {
         id: `BK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
-        customerId: authReq.user!.id,
-        customerName: customer?.name || authReq.user!.name || "Customer",
-        customerPhone: String(customer?.phone || body.customerPhone || "").slice(0, 30),
-        systemId, systemName: station.name, service: station.category,
-        gameTitle: typeof body.gameTitle === "string" ? body.gameTitle.trim().slice(0, 150) : undefined,
-        date, startTime: String(startTime), endTime, durationHours: duration,
-        applicableRate: hourlyRate, applicableRatePaise: Math.round(hourlyRate * 100),
-        membershipUsedHours: 0, vipMembershipUsedHours: 0, discount: 0, discountPaise: 0,
-        foodTotal: 0, foodTotalPaise: 0, subtotalPaise, finalAmount: subtotalPaise / 100, finalAmountPaise: subtotalPaise,
-        paymentStatus: "PENDING", paymentMethod, bookingStatus: "UPCOMING", qrCode: "",
-        idempotencyKey, createdAt: now.toISOString(), updatedAt: now,
+        customerId: authReq.user!.id, customerName: customer?.name || authReq.user!.name || "Customer", customerPhone: String(customer?.phone || body.customerPhone || "").slice(0, 30),
+        systemId, systemName: station.name, service: station.category, gameTitle: typeof body.gameTitle === "string" ? body.gameTitle.trim().slice(0, 150) : undefined,
+        date, startTime: String(startTime), endTime, durationHours: duration, applicableRate: hourlyRate, applicableRatePaise: Math.round(hourlyRate * 100),
+        membershipUsedHours: 0, vipMembershipUsedHours: 0, discount: 0, discountPaise: 0, foodTotal: 0, foodTotalPaise: 0, subtotalPaise,
+        finalAmount: subtotalPaise / 100, finalAmountPaise: subtotalPaise, paymentStatus: "PENDING", paymentMethod, bookingStatus: "UPCOMING", qrCode: "", idempotencyKey,
+        createdAt: now.toISOString(), updatedAt: now,
       };
       booking.qrCode = booking.id;
       await bookings.insertOne(booking, { session });
