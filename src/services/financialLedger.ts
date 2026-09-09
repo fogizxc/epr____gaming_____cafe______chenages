@@ -1,9 +1,9 @@
 import { getMongoDb } from "../server/mongodb.js";
 
 export type FinancialEntry = {
-  id: string;
+  transactionId: string;
   type: "SALE" | "REFUND" | "WALLET_CREDIT" | "WALLET_DEBIT" | "CASH_IN" | "CASH_OUT";
-  source: "GAMING" | "FNB" | "MEMBERSHIP" | "TOURNAMENT" | "WALLET" | "REFUND" | "CASH";
+  sourceType: "GAMING" | "FNB" | "MEMBERSHIP" | "TOURNAMENT" | "WALLET" | "REFUND" | "CASH";
   sourceId: string;
   customerId?: string;
   paymentId?: string;
@@ -16,7 +16,7 @@ export type FinancialEntry = {
 };
 
 export async function recordFinancialTransaction(entry: FinancialEntry) {
-  if (!entry.id || !entry.sourceId) throw new Error("FINANCIAL_ENTRY_ID_REQUIRED");
+  if (!entry.transactionId || !entry.sourceId) throw new Error("FINANCIAL_ENTRY_ID_REQUIRED");
   if (!Number.isSafeInteger(entry.amountPaise) || entry.amountPaise < 0) throw new Error("INVALID_FINANCIAL_AMOUNT");
   const db = await getMongoDb();
   try {
@@ -28,7 +28,7 @@ export async function recordFinancialTransaction(entry: FinancialEntry) {
   return { duplicate: false };
 }
 
-export async function financialEntryExists(id: string) {
+export async function financialEntryExists(transactionId: string) {
   const db = await getMongoDb();
-  return Boolean(await db.collection("financial_ledger").findOne({ id }, { projection: { _id: 1 } }));
+  return Boolean(await db.collection("financial_ledger").findOne({ transactionId }, { projection: { _id: 1 } }));
 }
