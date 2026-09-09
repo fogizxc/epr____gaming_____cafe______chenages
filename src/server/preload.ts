@@ -8,6 +8,20 @@ import { handleProductionCheckInBooking, handleProductionCancelBooking, handlePr
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment, handleProductionPaymentWebhook } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
 
+// Razorpay signs the exact request bytes. Wrap Express's JSON parser before the
+// application creates it so every JSON request retains those bytes for webhook verification.
+const originalJson = (express as any).json;
+(express as any).json = function (options: any = {}) {
+  const callerVerify = options.verify;
+  return originalJson({
+    ...options,
+    verify: (req: any, res: any, buf: Buffer, encoding: string) => {
+      req.rawBody = Buffer.from(buf);
+      if (typeof callerVerify === "function") callerVerify(req, res, buf, encoding);
+    },
+  });
+};
+
 const methods = ["get", "post", "put", "patch", "delete"] as const;
 const productionOverrides: Record<string, any> = {
   "GET /api/stations": handleProductionGetStations,
