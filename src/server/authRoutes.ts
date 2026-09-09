@@ -1,5 +1,5 @@
-import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
+import { ObjectId } from "mongodb";
 import { getDb } from "./mongodb.js";
 import {
   AppRole,
@@ -13,7 +13,7 @@ import {
   verifyPassword,
 } from "./auth.js";
 
-const PUBLIC_ROLES: AppRole[] = ["CUSTOMER"];
+const VALID_ROLES: AppRole[] = ["CUSTOMER", "EMPLOYEE", "ADMIN", "SUPER_ADMIN"];
 
 function publicUser(user: any) {
   return {
@@ -36,16 +36,10 @@ export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       const { name, email, phone, password, gamerTag } = req.body || {};
-      if (typeof name !== "string" || name.trim().length < 2 || name.length > 100) {
-        return res.status(400).json({ success: false, error: "A valid name is required" });
-      }
-      if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return res.status(400).json({ success: false, error: "A valid email is required" });
-      }
+      if (typeof name !== "string" || name.trim().length < 2 || name.length > 100) return res.status(400).json({ success: false, error: "A valid name is required" });
+      if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ success: false, error: "A valid email is required" });
       if (!validatePassword(password)) return res.status(400).json({ success: false, error: "Password must be 8-128 characters" });
-      if (phone !== undefined && (typeof phone !== "string" || phone.length > 30)) {
-        return res.status(400).json({ success: false, error: "Invalid phone number" });
-      }
+      if (phone !== undefined && (typeof phone !== "string" || phone.length > 30)) return res.status(400).json({ success: false, error: "Invalid phone number" });
 
       const db = getDb();
       const normalizedEmail = email.trim().toLowerCase();
@@ -54,18 +48,12 @@ export function registerAuthRoutes(app: Express) {
 
       const { hash, salt } = hashPassword(password);
       const user = {
-        name: name.trim(),
-        email: normalizedEmail,
+        name: name.trim(), email: normalizedEmail,
         phone: typeof phone === "string" ? phone.trim() : undefined,
         gamerTag: typeof gamerTag === "string" ? gamerTag.trim().slice(0, 50) : undefined,
-        passwordHash: hash,
-        passwordSalt: salt,
-        role: "CUSTOMER" as const,
-        permissions: [],
-        isActive: true,
-        isEmailVerified: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        passwordHash: hash, passwordSalt: salt, role: "CUSTOMER" as const,
+        permissions: [], isActive: true, isEmailVerified: false,
+        createdAt: new Date(), updatedAt: new Date(),
       };
       const result = await db.collection("users").insertOne(user);
       const created = { ...user, _id: result.insertedId };
@@ -85,24 +73,14 @@ export function registerAuthRoutes(app: Express) {
       if (!validatePassword(password)) return res.status(400).json({ success: false, error: "Invalid credentials" });
       const identifier = String(email || idOrUsername || "").trim();
       if (!identifier) return res.status(400).json({ success: false, error: "Invalid credentials" });
-
-      const db = getDb();
-      const user = await db.collection("users").findOne({
-        $or: [{ email: identifier.toLowerCase() }, { gamerTag: identifier }, { phone: identifier }, { staffCode: identifier }],
-        isActive: { $ne: false },
-      });
-      if (!user || !user.passwordHash || !user.passwordSalt || !verifyPassword(password, user.passwordHash, user.passwordSalt)) {
-        return res.status(401).json({ success: false, error: "Invalid credentials" });
-      }
-
+      const user = await getDb().collection("users").findOne({ $or: [{ email: identifier.toLowerCase() }, { gamerTag: identifier }, { phone: identifier }, { staffCode: identifier }], isActive: { $ne: false } });
+      if (!user || !user.passwordHash || !user.passwordSalt || !verifyPassword(password, user.passwordHash, user.passwordSalt)) return res.status(401).json({ success: false, error: "Invalid credentials" });
       const role = (user.role || "CUSTOMER") as AppRole;
-      if (!PUBLIC_ROLES.includes(role) && !["EMPLOYEE", "ADMIN", "SUPER_ADMIN"].includes(role)) {
-        return res.status(403).json({ success: false, error: "Account role is not permitted" });
-      }
+      if (!VALID_ROLES.includes(role)) return res.status(403).json({ success: false, error: "Account role is not permitted" });
       const permissions = Array.isArray(user.permissions) ? user.permissions : [];
       const accessToken = createAccessToken({ id: String(user._id), email: user.email, name: user.name, role, permissions });
       const refreshToken = await createRefreshToken(String(user._id));
-      await db.collection("users").updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date(), updatedAt: new Date() } });
+      await getDb().collection("users").updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date(), updatedAt: new Date() } });
       return res.json({ success: true, accessToken, refreshToken, user: publicUser(user) });
     } catch (error) {
       console.error("auth/login", error);
@@ -134,15 +112,10 @@ export function registerAuthRoutes(app: Express) {
   });
 
   app.get("/api/auth/me", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-    try {
-      const user = await getDb().collection("users").findOne({ _id: req.user!.id as any });
-      if (!user) return res.status(404).json({ success: false, error: "User not found" });
-      return res.json({ success: true, user: publicUser(user) });
-    } catch {
-      // IDs are intentionally accepted as strings by the access token; resolve through string id fallback.
-      const user = await getDb().collection("users").findOne({ legacyId: req.user!.id });
-      if (!user) return res.status(404).json({ success: false, error: "User not found" });
-      return res.json({ success: true, user: publicUser(user) });
-    }
+    const id = req.user!.id;
+    const query = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { legacyId: id };
+    const user = await getDb().collection("users").findOne(query);
+    if (!user) return res.status(404).json({ success: false, error: "User not found" });
+    return res.json({ success: true, user: publicUser(user) });
   });
 }
