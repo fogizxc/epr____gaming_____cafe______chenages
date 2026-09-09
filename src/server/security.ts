@@ -17,12 +17,14 @@ const CUSTOMER_PREFIXES = [
 ];
 
 const STAFF_PREFIXES = ["/api/employee/"];
+const ADMIN_PREFIXES = ["/api/admin/"];
 
 function startsWithAny(path: string, prefixes: string[]) { return prefixes.some((prefix) => path === prefix || path.startsWith(prefix)); }
 
 export function apiSecurityPolicy(req: Request, res: Response, next: NextFunction) {
   if (PUBLIC_EXACT.has(req.path)) return next();
   if (!req.path.startsWith("/api/")) return next();
+  if (startsWithAny(req.path, ADMIN_PREFIXES)) return requireRole("ADMIN", "SUPER_ADMIN")(req as any, res, next);
   if (req.path.startsWith("/api/brevo/") || req.path === "/api/env/status") return requireRole("ADMIN", "SUPER_ADMIN")(req as any, res, next);
   if (req.path === "/api/ai/concierge") return requireAuth(req as any, res, next);
   if (startsWithAny(req.path, STAFF_PREFIXES)) return requireRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")(req as any, res, next);
