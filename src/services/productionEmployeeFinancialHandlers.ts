@@ -15,22 +15,24 @@ const oid=(x:string)=>ObjectId.isValid(x)?{$or:[{id:x},{_id:new ObjectId(x)}]}:{
 
 export async function handleEmployeeWalkInFinancial(req:Request,res:Response){
  const u=user(req);if(!u)return fail(res,401,"Authentication required");const key=idem(req);if(key.length<16||key.length>128)return fail(res,400,"A valid Idempotency-Key is required");
- const {systemId,customerName,customerPhone,durationHours,gameTitle}=req.body||{};const hours=Number(durationHours);if(!systemId||!customerName||!customerPhone||!Number.isFinite(hours)||hours<=0||hours>12)return fail(res,400,"systemId, customerName, customerPhone and valid durationHours are required");
+ const {systemId,customerName,customerPhone,durationHours,gameTitle}=req.body||{};const hours=Number(durationHours);const method=String(req.body?.paymentMethod||"CASH").toUpperCase();
+ if(!systemId||!customerName||!customerPhone||!Number.isFinite(hours)||hours<=0||hours>12)return fail(res,400,"systemId, customerName, customerPhone and valid durationHours are required");
+ if(!["CASH","UPI","CARD"].includes(method))return fail(res,400,"Walk-in payment must be CASH, UPI or CARD");
  const db=await getMongoDb(),client=getMongoClient();if(!client)return fail(res,503,"MongoDB transaction support is unavailable");
  const existing=await db.collection("active_sessions").findOne({employeeId:u.id,idempotencyKey:key});if(existing)return res.json({success:true,data:{session:existing},duplicate:true});
  const tx=client.startSession();let sessionDoc:any;
  try{await tx.withTransaction(async()=>{
   const system:any=await db.collection("gaming_systems").findOneAndUpdate({id:String(systemId),status:"AVAILABLE"},{$set:{status:"ACTIVE",updatedAt:new Date()}},{session:tx,returnDocument:"after"});if(!system)throw new Error("STATION_UNAVAILABLE");
   const rule:any=await db.collection("pricing_rules").findOne({service:system.category},{session:tx});const rate=money(rule?.normalRatePaise??Number(rule?.normalRate||system.hourlyRate||0)*100);if(!rate)throw new Error("INVALID_RATE");const total=Math.round(rate*hours);const now=new Date();
-  sessionDoc={id:id("SESS"),systemId:system.id,systemName:system.name,customerName:String(customerName).trim().slice(0,120),customerPhone:String(customerPhone).trim().slice(0,30),gameTitle:String(gameTitle||"Gaming Session").slice(0,120),startedAt:now,scheduledEndAt:new Date(now.getTime()+hours*3600000),durationHours:hours,ratePerHourPaise:rate,gamingChargePaise:total,totalPaise:total,paymentMethod:"CASH",paymentStatus:"PAID",status:"ACTIVE",employeeId:u.id,idempotencyKey:key,createdAt:now,updatedAt:now};
+  sessionDoc={id:id("SESS"),systemId:system.id,systemName:system.name,customerName:String(customerName).trim().slice(0,120),customerPhone:String(customerPhone).trim().slice(0,30),gameTitle:String(gameTitle||"Gaming Session").slice(0,120),startedAt:now,scheduledEndAt:new Date(now.getTime()+hours*3600000),durationHours:hours,ratePerHourPaise:rate,gamingChargePaise:total,totalPaise:total,paymentMethod:method,paymentStatus:"PAID",status:"ACTIVE",employeeId:u.id,idempotencyKey:key,createdAt:now,updatedAt:now};
   await db.collection("active_sessions").insertOne(sessionDoc,{session:tx});
   const invoice={id:id("INV"),invoiceNumber:`BC-${now.getFullYear()}-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,sessionId:sessionDoc.id,customerId:null,customerName:sessionDoc.customerName,status:"ISSUED",paymentStatus:"PAID",currency:"INR",subtotalPaise:total,taxPaise:0,discountPaise:0,totalPaise:total,issuedAt:now,createdAt:now,updatedAt:now,immutable:true,items:[{description:`${system.category||"Gaming"} walk-in session`,quantity:1,amountPaise:total}]};
   await db.collection("invoices").insertOne(invoice,{session:tx});
-  await recordFinancialTransaction({id:`SALE:GAMING:${sessionDoc.id}`,type:"SALE",source:"GAMING",sourceId:sessionDoc.id,paymentId:undefined,invoiceId:invoice.id,amountPaise:total,currency:"INR",occurredAt:now,createdAt:now,metadata:{paymentMethod:"CASH",employeeId:u.id,walkIn:true}},{db,session:tx});
+  await recordFinancialTransaction({id:`SALE:GAMING:${sessionDoc.id}`,type:"SALE",source:"GAMING",sourceId:sessionDoc.id,paymentId:undefined,invoiceId:invoice.id,amountPaise:total,currency:"INR",occurredAt:now,createdAt:now,metadata:{paymentMethod:method,employeeId:u.id,walkIn:true}},{db,session:tx});
   sessionDoc.invoiceId=invoice.id;
  });
  }catch(e:any){if(e.message==="STATION_UNAVAILABLE")return fail(res,409,"Station is unavailable");if(e.message==="INVALID_RATE")return fail(res,409,"Station has no valid price");if(e?.code===11000)return fail(res,409,"Walk-in already exists for this request");console.error("employee/walk-in-financial",e);return fail(res,500,"Unable to start walk-in session");}finally{await tx.endSession()}
- await writeAuditLog({actorId:u.id,actorRole:u.role,action:"WALKIN_FINANCIAL_SETTLED",entityType:"active_session",entityId:sessionDoc.id,metadata:{totalPaise:sessionDoc.totalPaise,invoiceId:sessionDoc.invoiceId}});return res.status(201).json({success:true,data:{session:sessionDoc,invoiceId:sessionDoc.invoiceId}});
+ await writeAuditLog({actorId:u.id,actorRole:u.role,action:"WALKIN_FINANCIAL_SETTLED",entityType:"active_session",entityId:sessionDoc.id,metadata:{totalPaise:sessionDoc.totalPaise,invoiceId:sessionDoc.invoiceId,paymentMethod:method}});return res.status(201).json({success:true,data:{session:sessionDoc,invoiceId:sessionDoc.invoiceId}});
 }
 
 export async function handleEmployeeFnbFinancial(req:Request,res:Response){
