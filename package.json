@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx --import ./src/server/preload.ts server.ts",
-    "build": "vite build && esbuild src/server/preload.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/preload.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node --import ./dist/preload.mjs dist/server.cjs",
+    "dev": "tsx --import ./src/server/catalogBootstrap.ts --import ./src/server/preload.ts server.ts",
+    "build": "vite build && esbuild src/server/catalogBootstrap.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/catalogBootstrap.mjs && esbuild src/server/preload.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/preload.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node --import ./dist/catalogBootstrap.mjs --import ./dist/preload.mjs dist/server.cjs",
     "db:init": "tsx scripts/init-mongodb.ts",
     "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
     "preview": "vite preview",
