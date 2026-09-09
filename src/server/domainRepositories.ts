@@ -1,4 +1,4 @@
-import { ClientSession, Db, Filter, ObjectId, OptionalId, UpdateFilter } from "mongodb";
+import { ClientSession, Db, ObjectId } from "mongodb";
 import { getMongoDb } from "./mongodb.js";
 
 export type DomainCollection =
@@ -9,36 +9,38 @@ export type DomainCollection =
   | "support_tickets" | "refunds" | "employee_shifts" | "cash_ledger" | "pricing_rules"
   | "price_history" | "promotion_codes" | "audit_logs" | "business_settings";
 
-export async function collection<T extends Record<string, any>>(name: DomainCollection) {
+type DomainDocument = Record<string, any>;
+
+export async function collection<T extends DomainDocument>(name: DomainCollection) {
   const db = await getMongoDb();
   return db.collection<T>(name);
 }
 
-export async function findById<T extends Record<string, any>>(name: DomainCollection, id: string) {
+export async function findById<T extends DomainDocument>(name: DomainCollection, id: string) {
   const col = await collection<T>(name);
-  const query = ObjectId.isValid(id) ? ({ _id: new ObjectId(id) } as Filter<T>) : ({ id } as Filter<T>);
+  const query: any = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id };
   return col.findOne(query);
 }
 
-export async function findMany<T extends Record<string, any>>(name: DomainCollection, filter: Filter<T> = {}, options?: { limit?: number; skip?: number; sort?: Record<string, 1 | -1> }) {
+export async function findMany<T extends DomainDocument>(name: DomainCollection, filter: Record<string, any> = {}, options?: { limit?: number; skip?: number; sort?: Record<string, 1 | -1> }) {
   const col = await collection<T>(name);
-  let cursor = col.find(filter);
+  let cursor = col.find(filter as any);
   if (options?.sort) cursor = cursor.sort(options.sort);
   if (options?.skip) cursor = cursor.skip(options.skip);
   if (options?.limit) cursor = cursor.limit(Math.min(options.limit, 500));
   return cursor.toArray();
 }
 
-export async function insertOne<T extends Record<string, any>>(name: DomainCollection, document: OptionalId<T>, session?: ClientSession) {
+export async function insertOne<T extends DomainDocument>(name: DomainCollection, document: T, session?: ClientSession) {
   const col = await collection<T>(name);
-  const result = await col.insertOne(document, session ? { session } : undefined);
+  const result = await col.insertOne(document as any, session ? { session } : undefined);
   return { ...document, _id: result.insertedId } as T;
 }
 
-export async function updateById<T extends Record<string, any>>(name: DomainCollection, id: string, update: UpdateFilter<T>, session?: ClientSession) {
+export async function updateById<T extends DomainDocument>(name: DomainCollection, id: string, update: Record<string, any>, session?: ClientSession) {
   const col = await collection<T>(name);
-  const query = ObjectId.isValid(id) ? ({ _id: new ObjectId(id) } as Filter<T>) : ({ id } as Filter<T>);
-  return col.updateOne(query, update, session ? { session } : undefined);
+  const query: any = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id };
+  return col.updateOne(query, update as any, session ? { session } : undefined);
 }
 
 export async function withTransaction<T>(work: (db: Db, session: ClientSession) => Promise<T>) {
@@ -55,7 +57,7 @@ export async function withTransaction<T>(work: (db: Db, session: ClientSession) 
   }
 }
 
-export async function reserveBookingAtomic<T extends Record<string, any>>(booking: OptionalId<T>, systemId: string, date: string, startTime: string, endTime: string) {
+export async function reserveBookingAtomic<T extends DomainDocument>(booking: T, systemId: string, date: string, startTime: string, endTime: string) {
   return withTransaction(async (db, session) => {
     const systems = db.collection("gaming_systems");
     const bookings = db.collection<T>("bookings");
@@ -65,17 +67,9 @@ export async function reserveBookingAtomic<T extends Record<string, any>>(bookin
       { session, returnDocument: "after" }
     );
     if (!station) throw new Error("STATION_UNAVAILABLE");
-
-    const conflict = await bookings.findOne({
-      systemId,
-      date,
-      bookingStatus: { $in: ["UPCOMING", "ACTIVE"] },
-      startTime: { $lt: endTime },
-      endTime: { $gt: startTime },
-    } as Filter<T>, { session });
+    const conflict = await bookings.findOne({ systemId, date, bookingStatus: { $in: ["UPCOMING", "ACTIVE"] }, startTime: { $lt: endTime }, endTime: { $gt: startTime } } as any, { session });
     if (conflict) throw new Error("BOOKING_CONFLICT");
-
-    const result = await bookings.insertOne(booking, { session });
+    const result = await bookings.insertOne(booking as any, { session });
     return { ...booking, _id: result.insertedId } as T;
   });
 }
