@@ -2,6 +2,7 @@ import express from "express";
 import { apiSecurityPolicy } from "./security.js";
 import { registerAuthRoutes } from "./authRoutes.js";
 import { ensureAuthIndexes } from "./auth.js";
+import { getMongoDb } from "./mongodb.js";
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
 
@@ -18,11 +19,16 @@ for (const method of methods) {
 
 const originalListen = (express.application as any).listen;
 (express.application as any).listen = function (...args: any[]) {
-  // Authentication routes are injected once, immediately before the application starts accepting traffic.
   registerAuthRoutes(this);
-  void ensureAuthIndexes().catch((error) => {
-    console.error("Authentication index bootstrap failed:", error);
-    process.exitCode = 1;
+  this.get("/api/ready", async (_req: any, res: any) => {
+    try {
+      const db = await getMongoDb();
+      await db.command({ ping: 1 });
+      return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } });
+    } catch {
+      return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } });
+    }
   });
+  void ensureAuthIndexes().catch((error) => console.error("Authentication index bootstrap failed:", error));
   return originalListen.apply(this, args);
 };
