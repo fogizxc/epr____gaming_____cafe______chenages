@@ -17,7 +17,7 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
   fnb_orders: [{ key: { customerId: 1, createdAt: -1 } }, { key: { status: 1, createdAt: -1 } }, { key: { paymentStatus: 1, inventoryStatus: 1, createdAt: -1 } }, { key: { idempotencyKey: 1 }, options: { unique: true, sparse: true } }],
   fnb_products: [{ key: { category: 1, isActive: 1, name: 1 } }, { key: { stockQty: 1, reservedQty: 1 } }],
   tournaments: [{ key: { status: 1, startAt: 1 } }, { key: { slug: 1 }, options: { unique: true, sparse: true } }],
-  tournament_teams: [{ key: { tournamentId: 1, teamName: 1 }, options: { unique: true } }, { key: { tournamentId: 1, status: 1 } }, { key: { captainId: 1, createdAt: -1 } }],
+  tournament_teams: [{ key: { tournamentId: 1, teamName: 1 }, options: { unique: true } }, { key: { tournamentId: 1, status: 1 } }, { key: { captainId: 1, createdAt: -1 } }, { key: { tournamentId: 1, registrationIdempotencyKey: 1 }, options: { unique: true, sparse: true } }, { key: { formResponseId: 1 }, options: { unique: true, sparse: true } }],
   waitlist: [{ key: { service: 1, status: 1, preferredTime: 1 } }],
   maintenance_tickets: [{ key: { status: 1, priority: -1, createdAt: -1 } }],
   support_tickets: [{ key: { customerId: 1, status: 1, createdAt: -1 } }],
@@ -30,6 +30,7 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
   promotion_codes: [{ key: { code: 1 }, options: { unique: true } }],
   audit_logs: [{ key: { actorId: 1, createdAt: -1 } }, { key: { entityType: 1, entityId: 1, createdAt: -1 } }],
   business_settings: [{ key: { key: 1 }, options: { unique: true } }],
+  financial_ledger: [{ key: { transactionId: 1 }, options: { unique: true } }, { key: { occurredAt: -1 } }, { key: { sourceType: 1, sourceId: 1 } }],
 };
 
 async function seedOperationalData() { const db = await getMongoDb(); const now = new Date(); const systems = db.collection("gaming_systems"); for (const system of INITIAL_SYSTEMS as any[]) await systems.updateOne({ id: system.id }, { $setOnInsert: { ...system, bookingVersion: 0, status: system.status === "ACTIVE" ? "AVAILABLE" : system.status, createdAt: now }, $set: { updatedAt: now } }, { upsert: true }); const pricing = db.collection("pricing_rules"); for (const rule of INITIAL_PRICING_RULES as any[]) await pricing.updateOne({ service: rule.service }, { $setOnInsert: { ...rule, createdAt: now }, $set: { updatedAt: now } }, { upsert: true }); }
