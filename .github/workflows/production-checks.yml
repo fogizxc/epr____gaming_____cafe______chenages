@@ -1,6 +1,7 @@
 name: Production checks
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, production-hardening]
   pull_request:
