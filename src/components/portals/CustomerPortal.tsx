@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useCafe } from '../../context/CafeContext';
-import { HeroSlider } from '../HeroSlider';
-import { FuzzyConsoleButtons } from '../FuzzyConsoleButtons';
+import { CustomerHomeDashboard } from '../customer/CustomerHomeDashboard';
+import { ExperienceDiscoveryView } from '../customer/ExperienceDiscoveryView';
+import { GameDiscoveryView } from '../customer/GameDiscoveryView';
+import { LiveSessionScreen } from '../customer/LiveSessionScreen';
+import { MyBookingsScreen } from '../customer/MyBookingsScreen';
+import { WalletScreen } from '../customer/WalletScreen';
+import { RewardsScreen } from '../customer/RewardsScreen';
+import { FnbOrderScreen } from '../customer/FnbOrderScreen';
+import { SupportScreen } from '../customer/SupportScreen';
+import { CustomerProfileScreen } from '../customer/CustomerProfileScreen';
 import { TournamentsScreen } from '../screens/TournamentsScreen';
-import { AccountsScreen } from '../screens/AccountsScreen';
-import { ReservationsScreen } from '../screens/ReservationsScreen';
 import { MembershipScreen } from '../screens/MembershipScreen';
 import { OffersScreen } from '../screens/OffersScreen';
 import { FloorMapScreen } from '../screens/FloorMapScreen';
@@ -21,7 +27,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   onOpenBooking,
   onOpenFnB
 }) => {
-  const { activeNav, requireLogin } = useCafe();
+  const { activeNav, requireLogin, setSelectedGameForBooking } = useCafe();
   const [overviewGame, setOverviewGame] = useState<HeroGameSlide | null>(null);
 
   // If user navigates to another sidebar tab, reset the overview game view
@@ -31,12 +37,21 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
     }
   }, [activeNav]);
 
+  const handleSelectGameForBooking = (game: {
+    title: string;
+    category?: GamingServiceCategory;
+    coverUrl?: string;
+  }) => {
+    if (setSelectedGameForBooking) {
+      setSelectedGameForBooking(game as any);
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-8 pb-12">
-      {/* SCREEN 1: MAIN ARENA / GAME STORE (Main Screen) OR DEDICATED GAME OVERVIEW SCREEN */}
+    <div id="customer-portal-root" className="flex flex-col gap-8 pb-12">
+      {/* 1. MAIN ARENA DASHBOARD OR DEDICATED GAME OVERVIEW SCREEN */}
       {activeNav === 'gamestore' && (
         overviewGame ? (
-          /* Dedicated Game Overview Page (Overview with video beside it, short description, and button to book slot) */
           <GameOverviewScreen
             game={overviewGame}
             onBack={() => setOverviewGame(null)}
@@ -54,78 +69,100 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
             }}
           />
         ) : (
-          /* Main Arena Screen: Stretched Hero Slider & Station Console Access Buttons */
-          <div id="main-screen-arena" className="flex flex-col gap-10 animate-fadeIn">
-            <section>
-              <HeroSlider
-                onOpenOverview={(game) => {
-                  requireLogin(
-                    () => setOverviewGame(game),
-                    `Please log in to view ${game.title} details, gameplay reels, and reserve gaming stations.`
-                  );
-                }}
-                onSelectGameForBooking={(game, category) => {
-                  requireLogin(() => {
-                    const targetCategory =
-                      category ||
-                      (game?.platforms?.includes('PS5')
-                        ? 'PS5'
-                        : game?.platforms?.includes('Xbox')
-                        ? 'Xbox'
-                        : 'Gaming PC');
-                    onOpenBooking(targetCategory);
-                  }, `Please log in to reserve a gaming rig for ${game?.title || 'this game'}.`);
-                }}
-              />
-            </section>
-
-            {/* Fuzzy Console Buttons with Live Video Feeds */}
-            <section>
-              <FuzzyConsoleButtons
-                onSelectConsole={(category) => {
-                  requireLogin(
-                    () => onOpenBooking(category),
-                    `Please log in to reserve a ${category} station.`
-                  );
-                }}
-              />
-            </section>
-          </div>
+          <CustomerHomeDashboard
+            onOpenBooking={onOpenBooking}
+            onOpenFnB={onOpenFnB}
+            onSelectGameForBooking={handleSelectGameForBooking}
+            onViewGameOverview={(game) => {
+              requireLogin(
+                () => setOverviewGame(game),
+                `Please log in to view ${game.title} details, gameplay reels, and reserve gaming stations.`
+              );
+            }}
+          />
         )
       )}
 
-      {/* SCREEN 2: DEDICATED SESSION HISTORY SCREEN */}
-      {activeNav === 'history' && (
-        <SessionHistoryScreen onOpenBooking={onOpenBooking} />
+      {/* 2. EXPERIENCES & HARDWARE DISCOVERY SCREEN */}
+      {activeNav === 'discover' && (
+        <ExperienceDiscoveryView
+          onOpenBooking={onOpenBooking}
+          onExploreGames={() => {}}
+        />
       )}
 
-      {/* SCREEN 3: DEDICATED TOURNAMENTS SCREEN */}
-      {activeNav === 'tournaments' && <TournamentsScreen />}
+      {/* 3. GAME DISCOVERY LIBRARY (PRE-INSTALLED 300+ TITLES) */}
+      {activeNav === 'games' && (
+        <GameDiscoveryView
+          onOpenBooking={onOpenBooking}
+          onSelectGameForBooking={handleSelectGameForBooking}
+        />
+      )}
 
-      {/* SCREEN 3: DEDICATED ACCOUNTS & BILLING SCREEN */}
-      {activeNav === 'accounts' && <AccountsScreen />}
-
-      {/* SCREEN 4: DEDICATED RESERVATIONS & QR PASSES SCREEN */}
-      {activeNav === 'reservations' && (
-        <ReservationsScreen
+      {/* 4. LIVE IN-SESSION CONTROLS & TELEMETRY */}
+      {activeNav === 'livesession' && (
+        <LiveSessionScreen
           onOpenBooking={onOpenBooking}
           onOpenFnB={onOpenFnB}
         />
       )}
 
-      {/* SCREEN 5: DEDICATED MEMBERSHIP & PERKS SCREEN */}
+      {/* 5. MY BOOKINGS & DIGITAL QR PASSES */}
+      {(activeNav === 'reservations' || activeNav === 'mybookings') && (
+        <MyBookingsScreen
+          onOpenBooking={onOpenBooking}
+          onOpenFnB={onOpenFnB}
+        />
+      )}
+
+      {/* 6. ARTISAN CAFÉ FOOD & DRINKS MENU */}
+      {activeNav === 'fnb' && (
+        <FnbOrderScreen />
+      )}
+
+      {/* 7. CAFÉ WALLET & TRANSACTIONS LEDGER */}
+      {(activeNav === 'wallet' || activeNav === 'accounts') && (
+        <WalletScreen />
+      )}
+
+      {/* 8. NEXUS REWARDS, DAILY CHALLENGES & REFERRALS */}
+      {activeNav === 'rewards' && (
+        <RewardsScreen />
+      )}
+
+      {/* 9. TOURNAMENTS & ESPORTS EVENTS */}
+      {activeNav === 'tournaments' && (
+        <TournamentsScreen />
+      )}
+
+      {/* 10. MEMBERSHIP PASSES & TIERS */}
       {activeNav === 'membership' && (
         <MembershipScreen onOpenBooking={onOpenBooking} />
       )}
 
-      {/* SCREEN 6: DEDICATED CURATED EXPERIENCES & SPECIAL OFFERS SCREEN */}
-      {(activeNav === 'offers' || activeNav === 'news') && (
-        <OffersScreen onOpenBooking={onOpenBooking} />
-      )}
-
-      {/* SCREEN 7: DEDICATED STATIONS FLOOR MAP SCREEN */}
+      {/* 11. FLOOR MAP & HARDWARE RIG MONITOR */}
       {activeNav === 'floormap' && (
         <FloorMapScreen onOpenBooking={onOpenBooking} />
+      )}
+
+      {/* 12. 24/7 FLOOR SUPPORT & ASSISTANCE DESK */}
+      {activeNav === 'support' && (
+        <SupportScreen />
+      )}
+
+      {/* 13. USER PROFILE & PREFERENCES */}
+      {activeNav === 'profile' && (
+        <CustomerProfileScreen />
+      )}
+
+      {/* 14. SESSION HISTORY */}
+      {activeNav === 'history' && (
+        <SessionHistoryScreen onOpenBooking={onOpenBooking} />
+      )}
+
+      {/* 15. SPECIAL OFFERS & PROMOTIONS */}
+      {(activeNav === 'offers' || activeNav === 'news') && (
+        <OffersScreen onOpenBooking={onOpenBooking} />
       )}
     </div>
   );

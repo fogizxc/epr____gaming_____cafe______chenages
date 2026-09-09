@@ -38,9 +38,40 @@ import {
   EyeOff,
   Copy,
   MessageCircle,
-  Mail
+  Mail,
+  LayoutDashboard,
+  Radio,
+  Truck,
+  Wrench,
+  Tag,
+  Building2
 } from 'lucide-react';
 import { BrevoSmtpManager } from './BrevoSmtpManager';
+import { AdminDashboard } from '../admin/AdminDashboard';
+import { AdminLiveOps } from '../admin/AdminLiveOps';
+import { AdminSuppliers } from '../admin/AdminSuppliers';
+import { AdminMaintenance } from '../admin/AdminMaintenance';
+import { AdminPromotions } from '../admin/AdminPromotions';
+import { AdminBusinessSettings } from '../admin/AdminBusinessSettings';
+import { AdminWalkInModal } from '../admin/AdminWalkInModal';
+
+export type AdminTab =
+  | 'DASHBOARD'
+  | 'LIVE_OPS'
+  | 'FINANCES'
+  | 'PRICING'
+  | 'INVENTORY'
+  | 'SUPPLIERS'
+  | 'SYSTEMS'
+  | 'MAINTENANCE'
+  | 'BOOKINGS'
+  | 'TOURNAMENTS'
+  | 'PROMOTIONS'
+  | 'STAFF'
+  | 'SETTINGS'
+  | 'ACCOUNTS'
+  | 'LOGS'
+  | 'BREVO_SMTP';
 
 export const AdminPortal: React.FC = () => {
   const {
@@ -75,7 +106,9 @@ export const AdminPortal: React.FC = () => {
     syncAccountsToGoogleSheet
   } = useCafe();
 
-  const [activeTab, setActiveTab] = useState<'FINANCES' | 'PRICING' | 'INVENTORY' | 'SYSTEMS' | 'TOURNAMENTS' | 'STAFF' | 'BOOKINGS' | 'LOGS' | 'ACCOUNTS' | 'BREVO_SMTP'>('FINANCES');
+  const [activeTab, setActiveTab] = useState<AdminTab>('DASHBOARD');
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [adminToast, setAdminToast] = useState<string | null>(null);
 
   // ===================== TAB 1: FINANCES STATE =====================
   const [financialTimeframe, setFinancialTimeframe] = useState<'today' | 'week' | 'month' | 'ytd'>('today');
@@ -557,18 +590,24 @@ function doPost(e) {
         </div>
       </div>
 
-      {/* Admin Section Navigation Tabs - ALL 8 FULLY ACTIVATED */}
+      {/* Admin Section Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-white/10 scrollbar-none">
         {[
+          { id: 'DASHBOARD', label: 'Executive Pulse', icon: LayoutDashboard },
+          { id: 'LIVE_OPS', label: 'Floor Operations', icon: Radio },
           { id: 'FINANCES', label: 'Financial Analytics', icon: TrendingUp },
           { id: 'PRICING', label: 'Tariffs & Surge Engine', icon: DollarSign },
           { id: 'INVENTORY', label: 'F&B POS Inventory', icon: Package },
+          { id: 'SUPPLIERS', label: 'Suppliers & Restock PO', icon: Truck },
           { id: 'SYSTEMS', label: 'Hardware Rigs & Assets', icon: Activity },
+          { id: 'MAINTENANCE', label: 'Tech & Maintenance', icon: Wrench },
           { id: 'BOOKINGS', label: 'Reservations Queue', icon: Calendar },
           { id: 'TOURNAMENTS', label: 'Esports Tournaments', icon: Trophy },
+          { id: 'PROMOTIONS', label: 'Promos & Loyalty', icon: Tag },
           { id: 'STAFF', label: 'Staff & Cash Register', icon: Users },
-          { id: 'LOGS', label: 'Audit Trail', icon: FileText },
+          { id: 'SETTINGS', label: 'Business Profile & GST', icon: Building2 },
           { id: 'ACCOUNTS', label: 'Users & Google Sheets', icon: FileSpreadsheet },
+          { id: 'LOGS', label: 'Audit Trail', icon: FileText },
           { id: 'BREVO_SMTP', label: 'Brevo SMTP Relay', icon: Mail }
         ].map((tab) => {
           const Icon = tab.icon;
@@ -589,6 +628,42 @@ function doPost(e) {
           );
         })}
       </div>
+
+      {/* Global Toast Notice */}
+      {adminToast && (
+        <div className="p-3 bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs rounded-xl flex items-center gap-2 shadow-lg backdrop-blur-md animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="font-semibold">{adminToast}</span>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 0: Real-Time Executive Dashboard Pulse */}
+      {/* ========================================================================= */}
+      {activeTab === 'DASHBOARD' && (
+        <AdminDashboard
+          onNavigateTab={(tab) => setActiveTab(tab as any)}
+          onOpenWalkInModal={() => setShowWalkInModal(true)}
+          onToggleSurge={(preset) => {
+            if (preset === 'NORMAL') {
+              updatePricing({ ...pricing, peakSurgePercent: 0, weekendSurgePercent: 0 });
+            } else if (preset === 'PEAK') {
+              updatePricing({ ...pricing, peakSurgePercent: 15 });
+            } else if (preset === 'WEEKEND') {
+              updatePricing({ ...pricing, weekendSurgePercent: 25 });
+            }
+          }}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 0.5: Live Floor Operations & Active Station Controls */}
+      {/* ========================================================================= */}
+      {activeTab === 'LIVE_OPS' && (
+        <AdminLiveOps
+          onOpenWalkInModal={() => setShowWalkInModal(true)}
+        />
+      )}
 
       {/* ========================================================================= */}
       {/* TAB 1: Financial Analytics */}
@@ -1194,6 +1269,13 @@ function doPost(e) {
       )}
 
       {/* ========================================================================= */}
+      {/* TAB: Suppliers, Wholesale Vendors & Purchase Orders */}
+      {/* ========================================================================= */}
+      {activeTab === 'SUPPLIERS' && (
+        <AdminSuppliers />
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 4: Hardware Rigs, Assets & Telemetry */}
       {/* ========================================================================= */}
       {activeTab === 'SYSTEMS' && (
@@ -1409,6 +1491,13 @@ function doPost(e) {
             })}
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: Hardware Maintenance & Technician Ticketing */}
+      {/* ========================================================================= */}
+      {activeTab === 'MAINTENANCE' && (
+        <AdminMaintenance />
       )}
 
       {/* ========================================================================= */}
@@ -1907,6 +1996,13 @@ function doPost(e) {
       )}
 
       {/* ========================================================================= */}
+      {/* TAB: Promotional Campaigns, Discount Coupons & Referrals */}
+      {/* ========================================================================= */}
+      {activeTab === 'PROMOTIONS' && (
+        <AdminPromotions />
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 7: Staff Roster & Cash Register Till Audit */}
       {/* ========================================================================= */}
       {activeTab === 'STAFF' && (
@@ -2112,6 +2208,13 @@ function doPost(e) {
             )}
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: Business Profile, Operating Hours & Legal GST Settings */}
+      {/* ========================================================================= */}
+      {activeTab === 'SETTINGS' && (
+        <AdminBusinessSettings />
       )}
 
       {/* ========================================================================= */}
@@ -2610,6 +2713,16 @@ function doPost(e) {
       {activeTab === 'BREVO_SMTP' && (
         <BrevoSmtpManager />
       )}
+
+      {/* Global Admin Walk-In Session Launch Modal */}
+      <AdminWalkInModal
+        isOpen={showWalkInModal}
+        onClose={() => setShowWalkInModal(false)}
+        onSuccess={(msg) => {
+          setAdminToast(msg);
+          setTimeout(() => setAdminToast(null), 3500);
+        }}
+      />
     </div>
   );
 };

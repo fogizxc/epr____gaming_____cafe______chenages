@@ -3,10 +3,78 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import { GoogleGenAI } from "@google/genai";
+import {
+  handleGetStations,
+  handleGetStationAvailability,
+  handleCreateBooking,
+  handleCheckInBooking,
+  handleCancelBooking,
+  handleRescheduleBooking,
+  handleExtendSession,
+  handleTransferRequest,
+  handleCallStaff,
+  handleWalletRecharge,
+  handlePurchaseMembership,
+  handleRedeemReward,
+  handleCreateFnbOrder,
+  handleGetSupportTickets,
+  handleCreateSupportTicket,
+  handleGetCustomerData,
+  handleGetChallenges,
+  handleGetRewardCatalog,
+  handleGetReferralInfo,
+  handleClaimChallenge,
+  handleGetWalletTransactions,
+  handleSupportTicketReply
+} from "./src/services/apiHandlers";
+import {
+  handleGetEmployeeDashboard,
+  handleGetShiftStatus,
+  handleStartShift,
+  handleEndShift,
+  handleGetCashLedger,
+  handleAddCashLedgerEntry,
+  handleEmployeeWalkIn,
+  handleEmployeeBookingCheckIn,
+  handleEmployeeExtendSession,
+  handleEmployeeTransferSession,
+  handleEmployeeEndSession,
+  handleGetWaitlist,
+  handleAddWaitlist,
+  handleAssignWaitlistStation,
+  handleRemoveWaitlist,
+  handleGetMaintenanceTickets,
+  handleCreateMaintenanceTicket,
+  handleUpdateMaintenanceStatus,
+  handleGetOperationalAlerts,
+  handleResolveOperationalAlert,
+  handleGetEmployeeActivity,
+  handleGetRefundRequests,
+  handleRequestRefund,
+  handleProcessRefund,
+  handleSearchCustomers,
+  handleCreateCustomer,
+  handleEmployeeFnbOrder
+} from "./src/services/employeeApiHandlers";
+
 
 dotenv.config();
 
 const PORT = 3000;
+
+// Lazy Gemini API Client Initialization
+let geminiClient: GoogleGenAI | null = null;
+function getGeminiClient(): GoogleGenAI {
+  if (!geminiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is not configured. Please add it in Secrets.");
+    }
+    geminiClient = new GoogleGenAI({ apiKey });
+  }
+  return geminiClient;
+}
 
 interface BrevoEmailPayload {
   to: string;
@@ -175,6 +243,18 @@ function generateEmailHtml(payload: BrevoEmailPayload): string {
                   Delivered securely via <strong style="color: #a1a1aa;">Brevo SMTP Relay</strong>. If you did not initiate this request, you can safely disregard this email.
                 </p>
               </div>
+
+              ${
+                process.env.APP_URL
+                  ? `
+              <div style="text-align: center; margin-top: 28px;">
+                <a href="${process.env.APP_URL}" style="display: inline-block; background: linear-gradient(135deg, #dc2626, #b91c1c); color: #ffffff; text-decoration: none; font-size: 13px; font-weight: 700; padding: 12px 28px; border-radius: 9999px; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);">
+                  Open Bytes &amp; Brew Portal &rarr;
+                </a>
+              </div>
+              `
+                  : ""
+              }
             </td>
           </tr>
 
@@ -245,6 +325,65 @@ async function startServer() {
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  // -------------------------------------------------------------
+  // Customer Portal Server-Authoritative Endpoints
+  // -------------------------------------------------------------
+  app.get("/api/me", handleGetCustomerData);
+  app.get("/api/stations", handleGetStations);
+  app.get("/api/stations/:id/availability", handleGetStationAvailability);
+  app.post("/api/bookings", handleCreateBooking);
+  app.post("/api/bookings/:id/check-in", handleCheckInBooking);
+  app.post("/api/bookings/:id/cancel", handleCancelBooking);
+  app.post("/api/bookings/:id/reschedule", handleRescheduleBooking);
+  app.post("/api/sessions/:id/extend", handleExtendSession);
+  app.post("/api/sessions/:id/transfer-request", handleTransferRequest);
+  app.post("/api/sessions/:id/call-staff", handleCallStaff);
+  app.post("/api/wallet/recharge", handleWalletRecharge);
+  app.get("/api/wallet/transactions", handleGetWalletTransactions);
+  app.post("/api/membership/purchase", handlePurchaseMembership);
+  app.get("/api/rewards/challenges", handleGetChallenges);
+  app.get("/api/rewards/catalog", handleGetRewardCatalog);
+  app.get("/api/referrals/me", handleGetReferralInfo);
+  app.post("/api/rewards/claim-challenge", handleClaimChallenge);
+  app.post("/api/rewards/redeem", handleRedeemReward);
+  app.post("/api/fnb/orders", handleCreateFnbOrder);
+  app.post("/api/fnb/order", handleCreateFnbOrder);
+  app.get("/api/support/tickets", handleGetSupportTickets);
+  app.post("/api/support/tickets", handleCreateSupportTicket);
+  app.post("/api/support/tickets/:id/reply", handleSupportTicketReply);
+
+  // -------------------------------------------------------------
+  // Employee Portal Server-Authoritative Endpoints
+  // -------------------------------------------------------------
+  app.get("/api/employee/dashboard", handleGetEmployeeDashboard);
+  app.get("/api/employee/shift", handleGetShiftStatus);
+  app.post("/api/employee/shift/start", handleStartShift);
+  app.post("/api/employee/shift/end", handleEndShift);
+  app.get("/api/employee/cash-ledger", handleGetCashLedger);
+  app.post("/api/employee/cash-ledger/entry", handleAddCashLedgerEntry);
+  app.post("/api/employee/walk-in", handleEmployeeWalkIn);
+  app.post("/api/employee/bookings/check-in", handleEmployeeBookingCheckIn);
+  app.post("/api/employee/sessions/:sessionId/extend", handleEmployeeExtendSession);
+  app.post("/api/employee/sessions/:sessionId/transfer", handleEmployeeTransferSession);
+  app.post("/api/employee/sessions/:sessionId/end", handleEmployeeEndSession);
+  app.get("/api/employee/waitlist", handleGetWaitlist);
+  app.post("/api/employee/waitlist/add", handleAddWaitlist);
+  app.post("/api/employee/waitlist/:waitlistId/assign", handleAssignWaitlistStation);
+  app.delete("/api/employee/waitlist/:waitlistId", handleRemoveWaitlist);
+  app.get("/api/employee/maintenance", handleGetMaintenanceTickets);
+  app.post("/api/employee/maintenance/report", handleCreateMaintenanceTicket);
+  app.post("/api/employee/maintenance/:ticketId/status", handleUpdateMaintenanceStatus);
+  app.get("/api/employee/alerts", handleGetOperationalAlerts);
+  app.post("/api/employee/alerts/:alertId/resolve", handleResolveOperationalAlert);
+  app.get("/api/employee/activity", handleGetEmployeeActivity);
+  app.get("/api/employee/refunds", handleGetRefundRequests);
+  app.post("/api/employee/refunds/request", handleRequestRefund);
+  app.post("/api/employee/refunds/:refundId/action", handleProcessRefund);
+  app.get("/api/employee/customers", handleSearchCustomers);
+  app.post("/api/employee/customers", handleCreateCustomer);
+  app.post("/api/employee/fnb/order", handleEmployeeFnbOrder);
+
 
   // GET /api/brevo/status - Return Brevo SMTP configuration state
   app.get("/api/brevo/status", async (req, res) => {
@@ -423,6 +562,80 @@ async function startServer() {
       });
     } catch (err: any) {
       return res.status(500).json({ success: false, error: err.message || "Failed to send test email" });
+    }
+  });
+
+  // GET /api/env/status - Health and config check for external integrations
+  app.get("/api/env/status", (req, res) => {
+    const config = getBrevoConfig();
+    res.json({
+      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      appUrl: process.env.APP_URL || null,
+      brevoConfigured: config.isConfigured,
+      brevoHost: config.host,
+      brevoPort: config.port,
+      brevoSender: config.fromEmail,
+      brevoSenderName: config.fromName,
+    });
+  });
+
+  // POST /api/ai/concierge - AI Gaming & Café Concierge powered by Gemini
+  app.post("/api/ai/concierge", async (req, res) => {
+    try {
+      const { prompt, systemInstruction } = req.body;
+      if (!prompt || typeof prompt !== "string") {
+        return res.status(400).json({ success: false, error: "Missing or invalid prompt string." });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(503).json({
+          success: false,
+          error: "GEMINI_API_KEY is not configured in Secrets. Configure GEMINI_API_KEY in the AI Studio Secrets panel.",
+        });
+      }
+
+      const ai = getGeminiClient();
+      const instruction =
+        systemInstruction ||
+        "You are the cybernetic gaming concierge for Bytes & Brew Gaming Café. You assist visitors with rig selection, game recommendations (PC, PS5, Xbox Series X, Sim Racing), tournament prep, and pairing drinks/food from our artisan café menu. Respond concisely, stylistically, and helpfully.";
+
+      let responseText = "";
+      const modelsToTry = ["gemini-3.8-flash", "gemini-2.5-flash"];
+      let lastError: any = null;
+
+      for (const model of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              systemInstruction: instruction,
+            },
+          });
+          if (response.text) {
+            responseText = response.text;
+            break;
+          }
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`Attempt with ${model} failed:`, err?.message || err);
+        }
+      }
+
+      if (!responseText && lastError) {
+        throw lastError;
+      }
+
+      return res.json({
+        success: true,
+        reply: responseText,
+      });
+    } catch (err: any) {
+      console.error("Gemini API error:", err);
+      return res.status(500).json({
+        success: false,
+        error: err.message || "Failed to generate AI response",
+      });
     }
   });
 

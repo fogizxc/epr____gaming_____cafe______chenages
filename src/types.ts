@@ -333,3 +333,307 @@ export interface ConsoleGameItem {
   description: string;
   installedOnSystems?: string[];
 }
+
+export type SupportTicketCategory =
+  | 'BOOKING'
+  | 'PAYMENT'
+  | 'STATION'
+  | 'FNB'
+  | 'MEMBERSHIP'
+  | 'OTHER'
+  | 'CONTROLLER'
+  | 'NETWORK'
+  | 'GAME_PROBLEM'
+  | 'GENERAL';
+
+export type SupportTicketStatus =
+  | 'OPEN'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'RESOLVED'
+  | 'CLOSED'
+  | 'WAITING_FOR_STAFF';
+
+export interface SupportTicket {
+  id: string;
+  customerId: string;
+  customerName: string;
+  stationId?: string;
+  stationName?: string;
+  category: SupportTicketCategory;
+  issue: string;
+  status: SupportTicketStatus;
+  createdAt: string;
+  messages?: { sender: string; text: string; time: string }[];
+}
+
+export interface StationTransferRequest {
+  id: string;
+  sessionId: string;
+  customerId: string;
+  customerName: string;
+  currentStationId: string;
+  currentStationName: string;
+  requestedStationId: string;
+  requestedStationName: string;
+  reason: string;
+  status: 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
+  createdAt: string;
+}
+
+export type FnbOrderStatus =
+  | 'PLACED'
+  | 'ACCEPTED'
+  | 'PREPARING'
+  | 'READY'
+  | 'DELIVERED'
+  | 'CANCELLED';
+
+export interface FnbCustomerOrder {
+  id: string;
+  sessionId?: string;
+  stationName?: string;
+  customerId: string;
+  customerName: string;
+  items: { id: string; name: string; price: number; quantity: number }[];
+  subtotal: number;
+  gst: number;
+  total: number;
+  paymentMethod: 'Wallet' | 'UPI' | 'Card' | 'BillToSession';
+  status: FnbOrderStatus;
+  orderTime: string;
+  estimatedDeliveryMins: number;
+}
+
+export interface DailyChallenge {
+  id: string;
+  title: string;
+  description: string;
+  xpReward: number;
+  progress: number;
+  maxProgress: number;
+  target?: number;
+  completed: boolean;
+  isClaimed?: boolean;
+  category?: string;
+}
+
+export interface LoyaltyReward {
+  id: string;
+  title: string;
+  description: string;
+  xpCost: number;
+  pointCost?: number;
+  category?: string;
+  type: 'WALLET_CREDIT' | 'FREE_HOURS' | 'FREE_DRINK' | 'TOURNAMENT_PASS' | 'DISCOUNT_VOUCHER';
+  value: number;
+  claimed: boolean;
+}
+
+export interface CustomerReferralInfo {
+  referralCode: string;
+  code?: string;
+  friendsReferred: number;
+  successfulReferrals: number;
+  totalEarned: number;
+}
+
+export interface SupplierVendor {
+  id: string;
+  name: string;
+  category: 'BEVERAGES' | 'SNACKS' | 'HARDWARE' | 'PERIPHERALS' | 'FURNITURE' | 'DAIRY_BAKERY';
+  contactPerson: string;
+  phone: string;
+  email: string;
+  address: string;
+  leadTimeDays: number;
+  paymentTerms: string;
+  status: 'ACTIVE' | 'ON_HOLD' | 'INACTIVE';
+  lastOrderDate: string;
+  pendingOrdersCount: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  items: { name: string; quantity: number; unitCost: number; totalCost: number }[];
+  totalAmount: number;
+  orderDate: string;
+  expectedDelivery: string;
+  status: 'ORDERED' | 'IN_TRANSIT' | 'RECEIVED' | 'CANCELLED';
+  notes?: string;
+}
+
+export interface PromotionCode {
+  id: string;
+  code: string;
+  discountType: 'PERCENT' | 'FLAT';
+  discountValue: number;
+  minSpend: number;
+  maxUses: number;
+  currentUses: number;
+  validFrom: string;
+  validUntil: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'DISABLED';
+  description: string;
+  applicableServices: string[];
+}
+
+export interface MaintenanceTicket {
+  id: string;
+  stationId: string;
+  stationName: string;
+  issueCategory: 'CONTROLLER_DRIFT' | 'DISPLAY_GLITCH' | 'AUDIO_FAILURE' | 'GAME_UPDATE' | 'NETWORK_PING' | 'PERIPHERAL_REPLACE' | 'CLEANING';
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
+  reportedBy: string;
+  reportedAt: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  assignedTechnician?: string;
+  description: string;
+  resolutionNotes?: string;
+  resolvedAt?: string;
+}
+
+export interface CafeBusinessSettings {
+  cafeName: string;
+  brandTagline: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  gstin: string;
+  contactPhone: string;
+  contactEmail: string;
+  operatingHours: {
+    open: string;
+    close: string;
+    weekendClose: string;
+  };
+  taxGstEnabled: boolean;
+  taxGstPercentage: number;
+  currencySymbol: string;
+  cancellationGracePeriodMins: number;
+  maxAdvanceBookingDays: number;
+  walkInDepositRequired: boolean;
+  emergencyBroadcastMessage?: string;
+  emergencyBroadcastActive?: boolean;
+}
+
+// -------------------------------------------------------------
+// Employee Portal Production Data Structures
+// -------------------------------------------------------------
+
+export type CashLedgerType =
+  | 'OPENING'
+  | 'SALE_CASH'
+  | 'SALE_UPI'
+  | 'EXPENSE'
+  | 'REFUND'
+  | 'DEPOSIT'
+  | 'WITHDRAWAL'
+  | 'ADJUSTMENT';
+
+export interface CashLedgerEntry {
+  id: string;
+  shiftId: string;
+  type: CashLedgerType;
+  amount: number;
+  runningBalance: number;
+  description: string;
+  referenceId?: string;
+  employeeName: string;
+  timestamp: string;
+}
+
+export type RefundStatus =
+  | 'REQUESTED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'PROCESSING'
+  | 'REFUNDED'
+  | 'REJECTED';
+
+export interface RefundRequest {
+  id: string;
+  invoiceId: string;
+  customerName: string;
+  customerPhone: string;
+  amount: number;
+  reason: string;
+  requestedBy: string;
+  approvedBy?: string;
+  status: RefundStatus;
+  requestedAt: string;
+  processedAt?: string;
+}
+
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
+
+export interface OperationalAlert {
+  id: string;
+  severity: AlertSeverity;
+  title: string;
+  message: string;
+  stationId?: string;
+  timestamp: string;
+  resolved: boolean;
+}
+
+export interface EmployeeActivity {
+  id: string;
+  employeeName: string;
+  role: Role;
+  action: string;
+  details: string;
+  resource: string;
+  timestamp: string;
+}
+
+export type EmployeeTab =
+  | 'DASHBOARD'
+  | 'WALKIN'
+  | 'BOOKINGS'
+  | 'SESSIONS'
+  | 'FLOOR'
+  | 'CUSTOMERS'
+  | 'FNB'
+  | 'BILLING'
+  | 'WAITLIST'
+  | 'TOURNAMENTS'
+  | 'MAINTENANCE'
+  | 'SHIFT'
+  | 'ALERTS'
+  | 'ACTIVITY';
+
+export interface EmployeeDashboardStats {
+  activeSessionsCount: number;
+  availableStationsCount: number;
+  reservedStationsCount: number;
+  maintenanceStationsCount: number;
+  upcomingBookingsCount: number;
+  waitlistCount: number;
+  todayWalkInsCount: number;
+  openFnbOrdersCount: number;
+  shiftCashCollected: number;
+  shiftTotalRevenue: number;
+  shiftStatus: 'OPEN' | 'CLOSED';
+}
+
+export interface EmployeeCustomerRecord {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  gamerTag?: string;
+  membershipTier?: string;
+  membershipExpiry?: string;
+  remainingHours?: number;
+  walletBalance: number;
+  totalVisits: number;
+  totalSpend: number;
+  lastVisit: string;
+  hasActiveSession?: boolean;
+  upcomingBookingsCount?: number;
+}
+

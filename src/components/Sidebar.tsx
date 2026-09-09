@@ -19,7 +19,11 @@ import {
   LogOut,
   User,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Wallet,
+  Coffee,
+  Headphones,
+  Compass
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,18 +41,31 @@ export const Sidebar: React.FC<SidebarProps> = () => {
     setAuthModalReason,
     logout,
     mobileMenuOpen,
-    setMobileMenuOpen
+    setMobileMenuOpen,
+    activeSessions,
+    bookings
   } = useCafe();
+
+  const myActiveSession = activeSessions.find((s) => s.status === 'ACTIVE');
+  const upcomingCount = bookings.filter(
+    (b) => b.bookingStatus === 'UPCOMING' || b.bookingStatus === 'CONFIRMED'
+  ).length;
 
   const navItems = [
     { id: 'gamestore', label: 'Main Arena', icon: Gamepad2 },
-    { id: 'history', label: 'Session History', icon: History },
-    { id: 'reservations', label: 'Reservations', icon: Calendar, badge: '2' },
-    { id: 'accounts', label: 'Accounts & Bills', icon: Receipt },
+    { id: 'discover', label: 'Experiences', icon: Compass },
+    { id: 'games', label: 'Game Vault', icon: Flame },
+    ...(myActiveSession
+      ? [{ id: 'livesession', label: 'Live Session', icon: Tv, badge: 'ACTIVE' }]
+      : []),
+    { id: 'reservations', label: 'My Bookings', icon: Calendar, badge: upcomingCount > 0 ? String(upcomingCount) : undefined },
+    { id: 'fnb', label: 'Artisan Café', icon: Coffee },
+    { id: 'wallet', label: 'Café Wallet', icon: Wallet },
+    { id: 'rewards', label: 'Nexus Rewards', icon: Sparkles, badge: 'XP' },
     { id: 'tournaments', label: 'Tournaments', icon: Trophy, badge: 'LIVE' },
-    { id: 'membership', label: 'Membership & Perks', icon: Crown },
-    { id: 'offers', label: 'Trending & Offers', icon: Flame },
+    { id: 'membership', label: 'Membership', icon: Crown },
     { id: 'floormap', label: 'Stations Floor', icon: Tv },
+    { id: 'support', label: 'Floor Support', icon: Headphones },
   ];
 
   const handleNavClick = (id: string) => {
@@ -285,7 +302,7 @@ export const Sidebar: React.FC<SidebarProps> = () => {
       >
         <button
           onClick={() => handleNavClick('gamestore')}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition min-w-[56px] min-h-[44px] cursor-pointer ${
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition min-w-[50px] min-h-[44px] cursor-pointer ${
             activeNav === 'gamestore' ? 'text-red-500' : 'text-white/50 hover:text-white'
           }`}
         >
@@ -293,40 +310,57 @@ export const Sidebar: React.FC<SidebarProps> = () => {
           <span className="text-[9px] uppercase font-bold tracking-wider">Arena</span>
         </button>
 
-        <button
-          onClick={() => handleNavClick('tournaments')}
-          className={`relative flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition min-w-[56px] min-h-[44px] cursor-pointer ${
-            activeNav === 'tournaments' ? 'text-red-500' : 'text-white/50 hover:text-white'
-          }`}
-        >
-          <Trophy className="w-5 h-5" />
-          <span className="text-[9px] uppercase font-bold tracking-wider">Events</span>
-          <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-600 animate-pulse" />
-        </button>
-
-        <button
-          onClick={() => handleNavClick('floormap')}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition min-w-[56px] min-h-[44px] cursor-pointer ${
-            activeNav === 'floormap' ? 'text-red-500' : 'text-white/50 hover:text-white'
-          }`}
-        >
-          <Tv className="w-5 h-5" />
-          <span className="text-[9px] uppercase font-bold tracking-wider">Stations</span>
-        </button>
+        {myActiveSession ? (
+          <button
+            onClick={() => handleNavClick('livesession')}
+            className={`relative flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition min-w-[50px] min-h-[44px] cursor-pointer ${
+              activeNav === 'livesession' ? 'text-red-500' : 'text-amber-400 hover:text-white'
+            }`}
+          >
+            <Tv className="w-5 h-5 animate-pulse" />
+            <span className="text-[9px] uppercase font-black tracking-wider">Live Rig</span>
+            <span className="absolute top-1 right-2 w-2 h-2 rounded-full bg-red-600 animate-ping" />
+          </button>
+        ) : (
+          <button
+            onClick={() => handleNavClick('discover')}
+            className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition min-w-[50px] min-h-[44px] cursor-pointer ${
+              activeNav === 'discover' ? 'text-red-500' : 'text-white/50 hover:text-white'
+            }`}
+          >
+            <Compass className="w-5 h-5" />
+            <span className="text-[9px] uppercase font-bold tracking-wider">Arenas</span>
+          </button>
+        )}
 
         <button
           onClick={() => handleNavClick('reservations')}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition min-w-[56px] min-h-[44px] cursor-pointer ${
+          className={`relative flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition min-w-[50px] min-h-[44px] cursor-pointer ${
             activeNav === 'reservations' ? 'text-red-500' : 'text-white/50 hover:text-white'
           }`}
         >
           <Calendar className="w-5 h-5" />
           <span className="text-[9px] uppercase font-bold tracking-wider">Passes</span>
+          {upcomingCount > 0 && (
+            <span className="absolute top-1 right-2 px-1 rounded-full bg-red-600 text-white text-[8px] font-mono font-bold">
+              {upcomingCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => handleNavClick('wallet')}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl transition min-w-[50px] min-h-[44px] cursor-pointer ${
+            activeNav === 'wallet' ? 'text-emerald-400' : 'text-white/50 hover:text-white'
+          }`}
+        >
+          <Wallet className="w-5 h-5" />
+          <span className="text-[9px] uppercase font-bold tracking-wider">Wallet</span>
         </button>
 
         <button
           onClick={() => setMobileMenuOpen(true)}
-          className="flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl text-white/50 hover:text-white transition min-w-[56px] min-h-[44px] cursor-pointer"
+          className="flex flex-col items-center justify-center gap-1 py-1 px-2.5 rounded-xl text-white/50 hover:text-white transition min-w-[50px] min-h-[44px] cursor-pointer"
         >
           <Menu className="w-5 h-5" />
           <span className="text-[9px] uppercase font-bold tracking-wider">Menu</span>
