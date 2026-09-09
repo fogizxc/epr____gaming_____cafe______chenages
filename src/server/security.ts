@@ -3,6 +3,7 @@ import { requireAuth, requireRole, optionalAuth } from "./auth.js";
 
 const PUBLIC_EXACT = new Set([
   "/api/health",
+  "/api/ready",
   "/api/auth/register",
   "/api/auth/login",
   "/api/auth/refresh",
@@ -20,16 +21,10 @@ function startsWithAny(path: string, prefixes: string[]) { return prefixes.some(
 export function apiSecurityPolicy(req: Request, res: Response, next: NextFunction) {
   if (PUBLIC_EXACT.has(req.path)) return next();
   if (!req.path.startsWith("/api/")) return next();
-
-  // Integration/configuration endpoints are never public. Keep secrets entirely server-side.
-  if (req.path.startsWith("/api/brevo/") || req.path === "/api/env/status") {
-    return requireRole("ADMIN", "SUPER_ADMIN")(req as any, res, next);
-  }
+  if (req.path.startsWith("/api/brevo/") || req.path === "/api/env/status") return requireRole("ADMIN", "SUPER_ADMIN")(req as any, res, next);
   if (req.path === "/api/ai/concierge") return requireAuth(req as any, res, next);
   if (startsWithAny(req.path, STAFF_PREFIXES)) return requireRole("EMPLOYEE", "ADMIN", "SUPER_ADMIN")(req as any, res, next);
   if (startsWithAny(req.path, CUSTOMER_PREFIXES)) return requireAuth(req as any, res, next);
-
-  // Fail closed for new API routes until their authentication policy is explicitly declared.
   return res.status(401).json({ success: false, error: "Authentication required" });
 }
 
