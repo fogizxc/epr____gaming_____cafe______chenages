@@ -5,7 +5,7 @@ import { INITIAL_SYSTEMS, INITIAL_PRICING_RULES } from "../src/data/initialData.
 const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: Record<string, unknown> }>> = {
   users: [
     { key: { email: 1 }, options: { unique: true, sparse: true } },
-    { key: { phone: 1 }, options: { unique: true, sparse: true } },
+    { key: { phone: 1 }, options: { unique: true, partialFilterExpression: { phone: { $type: "string", $ne: "" } } } },
     { key: { role: 1, isActive: 1 } },
   ],
   refresh_tokens: [
@@ -44,6 +44,10 @@ const indexPlan: Record<string, Array<{ key: Record<string, 1 | -1>; options?: R
     { key: { provider: 1, providerOrderId: 1 }, options: { unique: true, sparse: true } },
     { key: { customerId: 1, createdAt: -1 } },
     { key: { customerId: 1, idempotencyKey: 1 }, options: { unique: true, sparse: true } },
+  ],
+  razorpay_webhook_events: [
+    { key: { key: 1 }, options: { unique: true } },
+    { key: { receivedAt: -1 } },
   ],
   wallet_transactions: [
     { key: { customerId: 1, createdAt: -1 } },
