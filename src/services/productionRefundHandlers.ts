@@ -1,0 +1,56 @@
+import crypto from "node:crypto";
+import type { Request, Response } from "express";
+import { ObjectId } from "mongodb";
+import { getMongoDb } from "../server/mongodb.js";
+import { writeAuditLog, withTransaction } from "../server/domainRepositories.js";
+import type { AuthenticatedRequest } from "../server/auth.js";
+
+const fail = (res: Response, status: number, error: string) => res.status(status).json({ success: false, error });
+const actor = (req: Request) => (req as AuthenticatedRequest).user;
+const idFilter = (id: string) => ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { id };
+function env(name: string) { const v = process.env[name]?.trim(); if (!v) throw new Error(`${name}_NOT_CONFIGURED`); return v; }
+async function razorpayRefund(paymentId: string, amountPaise: number, receipt: string) {
+  const key = env("RAZORPAY_KEY_ID"); const secret = env("RAZORPAY_KEY_SECRET");
+  const response = await fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Basic ${Buffer.from(`${key}:${secret}`).toString("base64")}` }, body: JSON.stringify({ amount: amountPaise, speed: "normal", receipt }) });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) { const e: any = new Error("RAZORPAY_REFUND_FAILED"); e.status = response.status; e.provider = body; throw e; }
+  return body;
+}
+
+export async function handleAdminProcessRefund(req: Request, res: Response) {
+  const u = actor(req); if (!u || !["ADMIN", "SUPER_ADMIN"].includes(String(u.role))) return fail(res, 403, "Admin access required");
+  const refundId = String(req.params.id || "").trim(); if (!refundId) return fail(res, 400, "Refund id is required");
+  const action = String(req.body?.action || "").toUpperCase(); if (!["APPROVE", "REJECT", "PROCESS"].includes(action)) return fail(res, 400, "Invalid refund action");
+  const db = await getMongoDb(); const refund = await db.collection("refunds").findOne(idFilter(refundId)); if (!refund) return fail(res, 404, "Refund not found");
+  const now = new Date();
+  if (action === "REJECT") { if (!["REQUESTED", "APPROVED"].includes(refund.status)) return fail(res, 409, "Refund cannot be rejected in its current state"); await db.collection("refunds").updateOne(idFilter(refundId), { $set: { status: "REJECTED", rejectedBy: u.id, rejectedAt: now, updatedAt: now } }); await writeAuditLog({ actorId: u.id, actorRole: u.role, action: "REFUND_REJECTED", entityType: "refund", entityId: refund.id }); return res.json({ success: true, status: "REJECTED" }); }
+  if (action === "APPROVE") { if (refund.status !== "REQUESTED") return fail(res, 409, "Refund is not awaiting approval"); await db.collection("refunds").updateOne(idFilter(refundId), { $set: { status: "APPROVED", approvedBy: u.id, approvedAt: now, updatedAt: now } }); await writeAuditLog({ actorId: u.id, actorRole: u.role, action: "REFUND_APPROVED", entityType: "refund", entityId: refund.id }); return res.json({ success: true, status: "APPROVED" }); }
+  if (refund.status !== "APPROVED") return fail(res, 409, "Refund must be approved before processing");
+  const payment = await db.collection("payments").findOne({ bookingId: refund.bookingId, provider: "RAZORPAY", status: "CAPTURED", providerPaymentId: { $exists: true } });
+  if (!payment?.providerPaymentId) return fail(res, 409, "No captured Razorpay payment is linked to this booking");
+  const amountPaise = Number(refund.amountPaise); if (!Number.isSafeInteger(amountPaise) || amountPaise <= 0) return fail(res, 409, "Invalid refund amount");
+  const key = `refund:${refund.id}`;
+  const existing = await db.collection("refunds").findOne({ id: refund.id, providerRefundId: { $exists: true } }); if (existing) return res.json({ success: true, refund: existing, duplicate: true });
+  await db.collection("refunds").updateOne(idFilter(refundId), { $set: { status: "PROCESSING", processingBy: u.id, processingStartedAt: now, idempotencyKey: key, updatedAt: now } });
+  try {
+    const providerRefund = await razorpayRefund(String(payment.providerPaymentId), amountPaise, String(refund.id).slice(0, 40));
+    const completedAt = new Date();
+    const completed = await db.collection("refunds").findOneAndUpdate({ ...idFilter(refundId), status: "PROCESSING" }, { $set: { status: "COMPLETED", providerRefundId: providerRefund.id, providerStatus: providerRefund.status, completedAt, processedBy: u.id, updatedAt: completedAt } }, { returnDocument: "after" });
+    await db.collection("payments").updateOne({ _id: payment._id }, { $set: { refundedAt: completedAt, updatedAt: completedAt }, $inc: { refundedAmountPaise: amountPaise } });
+    await writeAuditLog({ actorId: u.id, actorRole: u.role, action: "REFUND_COMPLETED", entityType: "refund", entityId: refund.id, metadata: { bookingId: refund.bookingId, amountPaise, providerRefundId: providerRefund.id } });
+    return res.json({ success: true, refund: completed, providerRefund: { id: providerRefund.id, status: providerRefund.status, amount: providerRefund.amount } });
+  } catch (error: any) {
+    await db.collection("refunds").updateOne(idFilter(refundId), { $set: { status: "APPROVED", processingError: "Provider refund failed", updatedAt: new Date() } });
+    if (error.message === "RAZORPAY_KEY_ID_NOT_CONFIGURED" || error.message === "RAZORPAY_KEY_SECRET_NOT_CONFIGURED") return fail(res, 503, "Payment provider is not configured");
+    console.error("refund/process", error); return fail(res, 502, "Payment provider rejected the refund");
+  }
+}
+
+export async function handleAdminCreditNote(req: Request, res: Response) {
+  const u = actor(req); if (!u || !["ADMIN", "SUPER_ADMIN"].includes(String(u.role))) return fail(res, 403, "Admin access required");
+  const refundId = String(req.params.id || "").trim(); const db = await getMongoDb(); const refund = await db.collection("refunds").findOne(idFilter(refundId)); if (!refund) return fail(res, 404, "Refund not found"); if (refund.status !== "COMPLETED") return fail(res, 409, "Credit note requires a completed refund");
+  const existing = await db.collection("credit_notes").findOne({ refundId: refund.id }); if (existing) return res.json({ success: true, creditNote: existing, duplicate: true });
+  const now = new Date(); const note = { id: `CN-${Date.now()}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`, creditNoteNumber: `CN-${now.getFullYear()}-${crypto.randomBytes(5).toString("hex").toUpperCase()}`, refundId: refund.id, bookingId: refund.bookingId, customerId: refund.customerId, amountPaise: refund.amountPaise, currency: "INR", reason: refund.reason, status: "ISSUED", issuedAt: now, immutable: true, createdAt: now };
+  try { await db.collection("credit_notes").insertOne(note); } catch (e: any) { if (e?.code === 11000) { const duplicate = await db.collection("credit_notes").findOne({ refundId: refund.id }); if (duplicate) return res.json({ success: true, creditNote: duplicate, duplicate: true }); } throw e; }
+  await writeAuditLog({ actorId: u.id, actorRole: u.role, action: "CREDIT_NOTE_ISSUED", entityType: "credit_note", entityId: note.id, metadata: { refundId: refund.id, amountPaise: refund.amountPaise } }); return res.status(201).json({ success: true, creditNote: note });
+}
