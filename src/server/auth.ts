@@ -99,15 +99,57 @@ function getBearerToken(req: Request) {
   return header?.startsWith("Bearer ") ? header.slice(7).trim() : undefined;
 }
 
+function tokenUser(payload: Record<string, any>) {
+  if (!payload?.sub || !payload.role) return null;
+  return { id: String(payload.sub), email: payload.email, name: payload.name, role: payload.role as AppRole, permissions: Array.isArray(payload.permissions) ? payload.permissions : [] };
+}
+
 export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
   const token = getBearerToken(req);
   const payload = token ? verify(token) : null;
-  if (payload?.sub && payload.role) req.user = { id: String(payload.sub), email: payload.email, name: payload.name, role: payload.role as AppRole, permissions: Array.isArray(payload.permissions) ? payload.permissions : [] };
+  const user = payload ? tokenUser(payload) : null;
+  if (user) req.user = user;
   next();
 }
 
+/**
+ * Authentication is checked against the current users collection as well as the
+ * signed access token. This makes account deactivation, role changes and
+ * permission revocation effective immediately instead of waiting for token expiry.
+ */
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  return optionalAuth(req, res, () => req.user ? next() : res.status(401).json({ success: false, error: "Authentication required" }));
+  const token = getBearerToken(req);
+  const payload = token ? verify(token) : null;
+  const tokenIdentity = payload ? tokenUser(payload) : null;
+  if (!tokenIdentity) return res.status(401).json({ success: false, error: "Authentication required" });
+
+  void (async () => {
+    try {
+      const db = await getMongoDb();
+      const id = tokenIdentity.id;
+      const query = ObjectId.isValid(id)
+        ? { _id: new ObjectId(id), isActive: { $ne: false } }
+        : { $or: [{ id }, { legacyId: id }], isActive: { $ne: false } };
+      const user = await db.collection("users").findOne(query as any);
+      if (!user) return res.status(401).json({ success: false, error: "Account is inactive or unavailable" });
+
+      const role = user.role as AppRole;
+      if (!["CUSTOMER", "EMPLOYEE", "ADMIN", "SUPER_ADMIN"].includes(role)) {
+        return res.status(401).json({ success: false, error: "Account role is invalid" });
+      }
+      req.user = {
+        id: String(user._id),
+        email: user.email,
+        name: user.name,
+        role,
+        permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      };
+      next();
+    } catch (error) {
+      console.error("Authentication lookup failed:", error);
+      return res.status(503).json({ success: false, error: "Authentication service unavailable" });
+    }
+  })();
 }
 
 export function requireRole(...roles: AppRole[]) {
