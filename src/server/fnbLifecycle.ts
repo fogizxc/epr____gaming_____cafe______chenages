@@ -1,5 +1,6 @@
 import { getMongoDb, getMongoClient } from "./mongodb.js";
 import { writeAuditLog } from "./domainRepositories.js";
+import { recordFinancialTransaction } from "../services/financialLedger.js";
 
 const intervalMs = Math.max(15_000, Number(process.env.FNB_LIFECYCLE_INTERVAL_MS || 30_000));
 const paymentExpiryMs = Math.max(60_000, Number(process.env.FNB_PAYMENT_EXPIRY_MINUTES || 15) * 60_000);
@@ -24,9 +25,8 @@ async function releaseExpiredReservations(db: any) {
       });
       released++;
       await writeAuditLog({ action: "FNB_PAYMENT_TIMEOUT", entityType: "fnb_order", entityId: order.id, metadata: { released: true } });
-    } catch (error) {
-      console.error("F&B reservation release failed:", order.id, error);
-    } finally { await session.endSession(); }
+    } catch (error) { console.error("F&B reservation release failed:", order.id, error); }
+    finally { await session.endSession(); }
   }
   return released;
 }
@@ -48,11 +48,23 @@ async function repairCapturedOrders(db: any) {
         if (result.modifiedCount !== 1) throw new Error("ORDER_STATE_CHANGED");
       });
       repaired++;
-    } catch {
-      // Leave the order reserved for a later retry or operator reconciliation.
-    } finally { await session.endSession(); }
+    } catch { /* keep RESERVED for a later retry/operator reconciliation */ }
+    finally { await session.endSession(); }
   }
   return repaired;
+}
+
+async function reconcilePaidOrders(db: any) {
+  const orders = await db.collection("fnb_orders").find({ paymentStatus: "PAID", inventoryStatus: "CAPTURED" }).sort({ createdAt: 1 }).limit(100).toArray();
+  let recorded = 0;
+  for (const order of orders) {
+    const id = `SALE:FNB:${order.id}`;
+    try {
+      const result = await recordFinancialTransaction({ id, type: "SALE", source: "FNB", sourceId: order.id, customerId: order.customerId, paymentId: order.paymentId, invoiceId: (await db.collection("invoices").findOne({ fnbOrderId: order.id }, { projection: { id: 1 } }))?.id, amountPaise: Number(order.totalPaise), currency: "INR", occurredAt: new Date(order.paidAt || order.createdAt), createdAt: new Date(), metadata: { paymentMethod: order.paymentMethod } }, { db });
+      if (!result.duplicate) recorded++;
+    } catch (error) { console.error("F&B financial reconciliation failed:", order.id, error); }
+  }
+  return recorded;
 }
 
 export function startFnbLifecycle() {
@@ -63,6 +75,7 @@ export function startFnbLifecycle() {
       const db = await getMongoDb();
       await releaseExpiredReservations(db);
       await repairCapturedOrders(db);
+      await reconcilePaidOrders(db);
     } catch (error) { console.error("F&B lifecycle error:", error); }
     finally { running = false; }
   };
