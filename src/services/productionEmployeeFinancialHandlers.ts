@@ -28,7 +28,7 @@ export async function handleEmployeeWalkInFinancial(req:Request,res:Response){
   await db.collection("active_sessions").insertOne(sessionDoc,{session:tx});
   const invoice={id:id("INV"),invoiceNumber:`BC-${now.getFullYear()}-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,sessionId:sessionDoc.id,customerId:null,customerName:sessionDoc.customerName,status:"ISSUED",paymentStatus:"PAID",currency:"INR",subtotalPaise:total,taxPaise:0,discountPaise:0,totalPaise:total,issuedAt:now,createdAt:now,updatedAt:now,immutable:true,items:[{description:`${system.category||"Gaming"} walk-in session`,quantity:1,amountPaise:total}]};
   await db.collection("invoices").insertOne(invoice,{session:tx});
-  await recordFinancialTransaction({id:`SALE:GAMING:${sessionDoc.id}`,type:"SALE",source:"GAMING",sourceId:sessionDoc.id,paymentId:undefined,invoiceId:invoice.id,amountPaise:total,currency:"INR",occurredAt:now,createdAt:now,metadata:{paymentMethod:method,employeeId:u.id,walkIn:true}},{db,session:tx});
+  await recordFinancialTransaction({id:`SALE:GAMING:${sessionDoc.id}`,type:"SALE",source:"GAMING",sourceId:sessionDoc.id,invoiceId:invoice.id,amountPaise:total,currency:"INR",occurredAt:now,createdAt:now,metadata:{paymentMethod:method,employeeId:u.id,walkIn:true}},{db,session:tx});
   sessionDoc.invoiceId=invoice.id;
  });
  }catch(e:any){if(e.message==="STATION_UNAVAILABLE")return fail(res,409,"Station is unavailable");if(e.message==="INVALID_RATE")return fail(res,409,"Station has no valid price");if(e?.code===11000)return fail(res,409,"Walk-in already exists for this request");console.error("employee/walk-in-financial",e);return fail(res,500,"Unable to start walk-in session");}finally{await tx.endSession()}
@@ -50,4 +50,21 @@ export async function handleEmployeeFnbFinancial(req:Request,res:Response){
   await recordFinancialTransaction({id:`SALE:FNB:${order.id}`,type:"SALE",source:"FNB",sourceId:order.id,invoiceId:invoice.id,customerId:order.customerId||undefined,amountPaise:total,currency:"INR",occurredAt:now,createdAt:now,metadata:{paymentMethod:method,employeeId:u.id}},{db,session:tx});
  });}catch(e:any){if(e.message==="INVALID_ITEMS")return fail(res,400,"Invalid order items");if(e.message==="PRODUCT_UNAVAILABLE")return fail(res,409,"One or more F&B items are unavailable");if(e.message==="INVALID_PRICE")return fail(res,409,"One or more F&B prices are invalid");if(e.message==="INSUFFICIENT_STOCK")return fail(res,409,"One or more F&B items are out of stock");if(e.message==="INVALID_PAYMENT_METHOD")return fail(res,400,"Employee F&B payment must be CASH, UPI or CARD");if(e?.code===11000)return fail(res,409,"F&B order already exists for this request");console.error("employee/fnb-financial",e);return fail(res,500,"Unable to create F&B order");}finally{await tx.endSession()}
  await writeAuditLog({actorId:u.id,actorRole:u.role,action:"EMPLOYEE_FNB_FINANCIAL_SETTLED",entityType:"fnb_order",entityId:order.id,metadata:{totalPaise:order.totalPaise,invoiceId:invoice.id}});return res.status(201).json({success:true,data:{order,invoice}});
+}
+
+export async function handleEmployeeEndSessionFinancial(req:Request,res:Response){
+ const u=user(req);if(!u)return fail(res,401,"Authentication required");const key=idem(req);if(key.length<16||key.length>128)return fail(res,400,"A valid Idempotency-Key is required");
+ const sessionId=String(req.params.sessionId||"");if(!sessionId)return fail(res,400,"Session id is required");
+ const db=await getMongoDb(),client=getMongoClient();if(!client)return fail(res,503,"MongoDB transaction support is unavailable");
+ const tx=client.startSession();let result:any;
+ try{await tx.withTransaction(async()=>{
+  const active:any=await db.collection("active_sessions").findOne({id:sessionId},{session:tx});if(!active)throw new Error("SESSION_NOT_FOUND");
+  if(active.status!=="ACTIVE")throw new Error("SESSION_NOT_ACTIVE");
+  const now=new Date();const updated=await db.collection("active_sessions").findOneAndUpdate({id:sessionId,status:"ACTIVE"},{$set:{status:"COMPLETED",endedAt:now,updatedAt:now,endIdempotencyKey:key}},{session:tx,returnDocument:"after"});if(!updated)throw new Error("SESSION_ALREADY_ENDED");
+  const system=await db.collection("gaming_systems").findOneAndUpdate({id:String(active.systemId),status:"ACTIVE"},{$set:{status:"AVAILABLE",updatedAt:now}},{session:tx,returnDocument:"after"});if(!system)throw new Error("STATION_RELEASE_FAILED");
+  result=updated;
+  await writeAuditLog({actorId:u.id,actorRole:u.role,action:"SESSION_ENDED",entityType:"active_session",entityId:sessionId,metadata:{systemId:active.systemId,endedAt:now.toISOString(),idempotencyKey:key}},{db,session:tx});
+ });
+ }catch(e:any){if(e.message==="SESSION_NOT_FOUND")return fail(res,404,"Session not found");if(e.message==="SESSION_NOT_ACTIVE"||e.message==="SESSION_ALREADY_ENDED")return fail(res,409,"Session is no longer active");if(e.message==="STATION_RELEASE_FAILED")return fail(res,409,"Unable to release station");if(e?.code===11000)return fail(res,409,"This end-session request was already processed");console.error("employee/session-end-financial",e);return fail(res,500,"Unable to end session");}finally{await tx.endSession()}
+ return res.json({success:true,data:{session:result}});
 }
