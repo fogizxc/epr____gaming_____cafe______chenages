@@ -27,7 +27,10 @@ function walk(dir:string){
       ];
       for(const [pattern,severity,message] of checks){
         const match=pattern.exec(text);
-        if(match&&!rel.endsWith(".env.example"))findings.push({severity,file:rel,message,match:severity==="HIGH"?match[0]:undefined});
+        if(!match||rel.endsWith(".env.example"))continue;
+        // Password masks in admin/customer UIs are redaction placeholders, not credentials.
+        if(severity==="HIGH"&&/password\s*[:=]\s*["']•{8,}["']/i.test(match[0]))continue;
+        findings.push({severity,file:rel,message,match:severity==="HIGH"?match[0]:undefined});
       }
     }
   }
