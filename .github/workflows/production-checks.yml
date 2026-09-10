@@ -11,17 +11,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      mongodb:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --replSet rs0
-          --health-cmd "mongosh --quiet --eval 'try { rs.status().ok } catch(e) { 1 }'"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
     env:
       MONGODB_URI: mongodb://127.0.0.1:27017/bytes_brew_epr_test?replicaSet=rs0
       MONGODB_DB_NAME: bytes_brew_epr_test
@@ -35,11 +24,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Initialize MongoDB replica set
+      - name: Start MongoDB replica set
         shell: bash
         run: |
-          docker exec $(docker ps -q --filter ancestor=mongo:7 | head -1) mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
-          for i in {1..30}; do docker exec $(docker ps -q --filter ancestor=mongo:7 | head -1) mongosh --quiet --eval 'try { rs.status().myState === 1 ? quit(0) : quit(1) } catch(e) { quit(1) }' && break; sleep 1; done
+          docker run -d --name cafe-mongodb -p 27017:27017 mongo:7 --replSet rs0 --bind_ip_all
+          for i in {1..30}; do docker exec cafe-mongodb mongosh --quiet --eval 'try { db.adminCommand({ping:1}).ok === 1 ? quit(0) : quit(1) } catch(e) { quit(1) }' && break; sleep 1; done
+          docker exec cafe-mongodb mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
+          for i in {1..30}; do docker exec cafe-mongodb mongosh --quiet --eval 'try { rs.status().myState === 1 ? quit(0) : quit(1) } catch(e) { quit(1) }' && break; sleep 1; done
       - name: Install
         run: npm install
       - name: Repository production audit
@@ -54,3 +45,6 @@ jobs:
         run: npm run test:mongodb
       - name: Production build
         run: npm run build
+      - name: Stop MongoDB
+        if: always()
+        run: docker rm -f cafe-mongodb || true
