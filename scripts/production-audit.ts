@@ -4,7 +4,7 @@ import path from "node:path";
 const root=process.cwd();
 const ignored=new Set(["node_modules","dist",".git","coverage"]);
 const textExt=new Set([".ts",".tsx",".js",".jsx",".json",".yml",".yaml",".md",".env",".html"]);
-const findings:{severity:"HIGH"|"MEDIUM";file:string;message:string}[]=[];
+const findings:{severity:"HIGH"|"MEDIUM";file:string;message:string;match?:string}[]=[];
 
 function walk(dir:string){
   for(const entry of fs.readdirSync(dir,{withFileTypes:true})){
@@ -26,7 +26,8 @@ function walk(dir:string){
         [/console\.log\s*\(/,"MEDIUM","console.log found; use structured/error logging in production"]
       ];
       for(const [pattern,severity,message] of checks){
-        if(pattern.test(text)&&!rel.endsWith(".env.example"))findings.push({severity,file:rel,message});
+        const match=pattern.exec(text);
+        if(match&&!rel.endsWith(".env.example"))findings.push({severity,file:rel,message,match:severity==="HIGH"?match[0]:undefined});
       }
     }
   }
@@ -35,7 +36,7 @@ function walk(dir:string){
 walk(root);
 const unique=[...new Map(findings.map(x=>[`${x.severity}:${x.file}:${x.message}`,x])).values()];
 console.log(`Production audit: scanned repository; ${unique.length} finding(s).`);
-for(const f of unique)console.log(`[${f.severity}] ${f.file}: ${f.message}`);
+for(const f of unique)console.log(`[${f.severity}] ${f.file}: ${f.message}${f.match?` -> ${f.match}`:""}`);
 const high=unique.filter(x=>x.severity==="HIGH");
 if(high.length){console.error(`Production audit failed: ${high.length} high-severity finding(s).`);process.exit(1)}
 if(unique.length)console.log("No high-severity repository secret findings. Medium findings require manual review.");
