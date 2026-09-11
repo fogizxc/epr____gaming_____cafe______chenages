@@ -3,7 +3,7 @@ services:
     name: bytes-brew-gaming-cafe-epr
     runtime: docker
     plan: starter
-    branch: production-hardening
+    branch: main
     autoDeploy: true
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 30
