@@ -56,14 +56,23 @@ export function registerPasswordResetRoutes(app: Express) {
       const password = typeof req.body?.password === "string" ? req.body.password : "";
       if (token.length < 20 || token.length > 256 || password.length < 8 || password.length > 128) return res.status(400).json({ success: false, error: "Invalid reset request" });
       const db = await getMongoDb();
-      const record = await db.collection("password_reset_tokens").findOne({ tokenHash: tokenHash(token), usedAt: null, expiresAt: { $gt: new Date() } });
-      if (!record) return res.status(400).json({ success: false, error: "Reset link is invalid or expired" });
-      const userQuery = ObjectId.isValid(String(record.userId)) ? { _id: new ObjectId(String(record.userId)) } : { legacyId: String(record.userId) };
+      const tokenCollection = db.collection("password_reset_tokens");
+      const now = new Date();
+      const claimed = await tokenCollection.findOneAndUpdate(
+        { tokenHash: tokenHash(token), usedAt: null, expiresAt: { $gt: now } },
+        { $set: { usedAt: now } },
+        { returnDocument: "after" }
+      );
+      if (!claimed) return res.status(400).json({ success: false, error: "Reset link is invalid or expired" });
+      const userId = String(claimed.userId);
+      const userQuery = ObjectId.isValid(userId) ? { _id: new ObjectId(userId) } : { legacyId: userId };
       const { hash, salt } = hashPassword(password);
-      const result = await db.collection("users").updateOne(userQuery as any, { $set: { passwordHash: hash, passwordSalt: salt, updatedAt: new Date() } });
-      if (!result.matchedCount) return res.status(400).json({ success: false, error: "Account is unavailable" });
-      await db.collection("password_reset_tokens").updateOne({ _id: record._id, usedAt: null }, { $set: { usedAt: new Date() } });
-      await db.collection("refresh_tokens").updateMany({ userId: String(record.userId), revokedAt: null }, { $set: { revokedAt: new Date(), revokedReason: "password_reset" } });
+      const result = await db.collection("users").updateOne(userQuery as any, { $set: { passwordHash: hash, passwordSalt: salt, updatedAt: now } });
+      if (!result.matchedCount) {
+        await tokenCollection.updateOne({ _id: claimed._id }, { $set: { usedAt: null } });
+        return res.status(400).json({ success: false, error: "Account is unavailable" });
+      }
+      await db.collection("refresh_tokens").updateMany({ userId, revokedAt: null }, { $set: { revokedAt: now, revokedReason: "password_reset" } });
       return res.json({ success: true, message: "Password updated. Please sign in again." });
     } catch (error) {
       console.error("password-reset/complete", error);
