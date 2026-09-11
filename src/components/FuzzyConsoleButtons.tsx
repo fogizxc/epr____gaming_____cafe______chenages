@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import '../styles/cinematic-arena.css';
 import { useCafe } from '../context/CafeContext';
 import { GamingServiceCategory } from '../types';
-import { Monitor, Gamepad2, Gauge, Glasses, Volume2, VolumeX, ArrowUpRight, Radio, Sparkles, Zap, Play } from 'lucide-react';
+import { Monitor, Gamepad2, Gauge, Glasses, Volume2, VolumeX, ArrowUpRight, Radio, Sparkles, Zap } from 'lucide-react';
 
 interface FuzzyConsoleButtonsProps {
   onSelectConsole: (category: GamingServiceCategory) => void;
@@ -21,7 +21,7 @@ interface CategoryCard {
   objectPosition: string;
 }
 
-const PEXELS_VIDEO = (id: number) => `https://www.pexels.com/download/video/${id}/?epr=arena-cinematic-v3`;
+const PEXELS_VIDEO = (id: number) => `https://www.pexels.com/download/video/${id}/?epr=arena-cinematic-v4`;
 
 const FEATURED_CATEGORIES: CategoryCard[] = [
   { category: 'PS5', title: 'PlayStation 5', eyebrow: 'CONSOLE / 4K 120HZ', description: 'DualSense gaming, cinematic exclusives and competitive couch play.', specs: 'PS5 • DualSense • 4K gaming', videoUrl: PEXELS_VIDEO(35475885), fallbackPoster: '/videos/ps5_thumb.jpg', accent: 'red', icon: <Gamepad2 className="h-5 w-5" />, objectPosition: '50% 48%' },
@@ -72,8 +72,23 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
   }, []);
 
   useEffect(() => {
-    FEATURED_CATEGORIES.forEach((item) => { const video = videoRefs.current[item.category]; if (video) video.playbackRate = 0.88; });
+    FEATURED_CATEGORIES.forEach((item) => {
+      const video = videoRefs.current[item.category];
+      if (video) {
+        video.muted = true;
+        video.defaultMuted = true;
+        video.playbackRate = 0.88;
+        void video.play().catch(() => undefined);
+      }
+    });
   }, []);
+
+  useEffect(() => {
+    FEATURED_CATEGORIES.forEach((item) => {
+      const video = videoRefs.current[item.category];
+      if (video) void video.play().catch(() => undefined);
+    });
+  }, [activeIndex]);
 
   return (
     <section id="console-fuzzy-buttons-section" className="relative mt-8 w-full sm:mt-12 lg:mt-16">
@@ -112,8 +127,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
                 <span onClick={(event) => toggleMute(event, item.category)} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white/70 backdrop-blur-xl transition hover:bg-white/15 hover:text-white" role="button" aria-label={isMuted ? 'Unmute video' : 'Mute video'}>{isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className={`h-4 w-4 ${style.text}`} />}</span>
               </div>
 
-              <div className="absolute left-6 right-6 top-1/2 z-10 flex -translate-y-1/2 items-center justify-between pointer-events-none sm:left-8 sm:right-8">
-                <div className={`flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/30 text-white/80 backdrop-blur-xl transition duration-500 ${isActive ? 'scale-100 opacity-100' : 'scale-90 opacity-40'}`}><Play className="ml-0.5 h-5 w-5 fill-current" /></div>
+              <div className="absolute left-6 right-6 top-1/2 z-10 flex -translate-y-1/2 justify-end pointer-events-none sm:left-8 sm:right-8">
                 <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-white/45 backdrop-blur-xl">Preview {String(index + 1).padStart(2, '0')} / 05</span>
               </div>
 
