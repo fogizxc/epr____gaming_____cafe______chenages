@@ -8,8 +8,7 @@ import {
   Maximize2,
   Volume2,
   VolumeX,
-  Play,
-  Radio
+  Play
 } from 'lucide-react';
 
 interface HeroSliderProps {
@@ -21,7 +20,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   onSelectGameForBooking,
   onOpenOverview
 }) => {
-  const { heroGames, systems } = useCafe();
+  const { heroGames } = useCafe();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -145,17 +144,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     setHasMoved(false);
   };
 
-  // Live available rigs for current game's platforms
-  const availableRigsCount = systems.filter(
-    (s) =>
-      currentGame.platforms?.some(
-        (p) =>
-          s.category === p ||
-          (p === 'PS5' && s.category === 'PlayStation') ||
-          (p === 'PC' && s.category === 'Gaming PC')
-      ) && s.status === 'AVAILABLE'
-  ).length;
-
   return (
     <div className="w-full flex flex-col gap-4">
       {/* Full-width Panoramic Hero Screen - Auto-Sliding with Live Background Video */}
@@ -215,7 +203,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           />
         </div>
 
-        {/* Top Meta Bar: Category Tag, Live Status, Video Indicator & Audio Toggle */}
+        {/* Top Meta Bar: Category Tag, Video Controls & Game Tags */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 pointer-events-none">
             <span className="bg-red-600 text-white text-[11px] uppercase font-black tracking-widest px-3.5 py-1.5 rounded-full shadow-md">
@@ -231,25 +219,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
             ))}
           </div>
 
-          {/* Real-time Status, Video Reel Indicator & Sound Switcher */}
+          {/* Video Sound Switcher */}
           <div className="flex items-center gap-2.5">
-            {/* Live Reel Badge */}
-            <div className="flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full pointer-events-none">
-              <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-              <span className="text-[10px] uppercase font-mono tracking-wider font-bold text-white/90 flex items-center gap-1.5">
-                <Radio className="w-3 h-3 text-red-500" />
-                <span>Live 4K Reel</span>
-              </span>
-            </div>
-
-            {/* Live Rigs Availability */}
-            <div className="flex items-center gap-2 bg-black/70 backdrop-blur-md border border-white/15 px-3.5 py-1.5 rounded-full pointer-events-none">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[11px] uppercase tracking-wider font-bold text-white">
-                {availableRigsCount > 0 ? `${availableRigsCount} Rigs Ready` : 'Stations Free'}
-              </span>
-            </div>
-
             {/* Video Sound Toggle Button */}
             <button
               id="btn-hero-toggle-sound"
