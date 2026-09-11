@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CafeProvider, useCafe } from './context/CafeContext';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -17,13 +17,19 @@ import { PasswordResetPage } from './components/PasswordResetPage';
 import { GamingServiceCategory } from './types';
 
 const MainAppLayout: React.FC = () => {
-  const { currentRole, isLoggedIn, selectedStationForBooking, setSelectedStationForBooking, activeInvoiceForModal, setActiveInvoiceForModal, activeConsoleForGamesModal, setActiveConsoleForGamesModal } = useCafe();
+  const { activeNav, currentRole, isLoggedIn, selectedStationForBooking, setSelectedStationForBooking, activeInvoiceForModal, setActiveInvoiceForModal, activeConsoleForGamesModal, setActiveConsoleForGamesModal } = useCafe();
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [fnbSessionId, setFnbSessionId] = useState<string | null>(null);
   const handleOpenBooking = (_category?: GamingServiceCategory) => setShowBookingModal(true);
   const handleOpenQuickWalkIn = () => setShowWalkInModal(true);
   const handleOpenFnb = (sessionId: string) => setFnbSessionId(sessionId);
+
+  // Every in-app section/navigation change starts at the top of the new page.
+  // This prevents the previous section's scroll position from carrying over.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [activeNav, currentRole]);
 
   return <div className="flex min-h-screen bg-[#050505] text-[#e0e0e0] font-sans selection:bg-red-600 selection:text-white">
     <Sidebar onOpenQuickWalkIn={handleOpenQuickWalkIn} />
