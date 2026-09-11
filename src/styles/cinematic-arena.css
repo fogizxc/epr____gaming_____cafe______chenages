@@ -28,3 +28,100 @@
 @media (prefers-reduced-motion: reduce) {
   .cinematic-film-grain, .cinematic-light-sweep { animation: none !important; }
 }
+
+/* ================================================================
+   MOBILE HERO / STATUS COMPOSITION
+   Keep the game title centered while moving the compact live-status
+   controls onto the row immediately above the Available platforms.
+   ================================================================ */
+@media (max-width: 767px) {
+  #hero-slider-main {
+    min-height: 560px !important;
+    padding: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  /* Center the main game title, category and tagline on mobile. */
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 {
+    width: 100% !important;
+    max-width: none !important;
+    margin-top: auto !important;
+    margin-bottom: auto !important;
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    text-align: center !important;
+  }
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 > div:first-child {
+    justify-content: center !important;
+  }
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 h1,
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 p {
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 p {
+    max-width: 92% !important;
+  }
+
+  /* The live reel / rigs / sound controls become one centered compact row. */
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 {
+    position: static !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 > div:first-child {
+    display: none !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 > div:last-child {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: .4rem !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 > div:last-child > div,
+  #hero-slider-main #btn-hero-toggle-sound {
+    flex: 0 0 auto !important;
+    padding: .35rem .55rem !important;
+    min-height: 30px !important;
+    font-size: 8px !important;
+  }
+
+  /* Bottom platform row: Available + PC/PS5 on the left, arena count on right. */
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3.border-t {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: .55rem !important;
+    padding-top: .7rem !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3.border-t > div:first-child {
+    width: 100% !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: .4rem !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3.border-t > div:first-child > div {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3.border-t > div:last-child {
+    justify-content: center !important;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 > div:last-child {
+    gap: .3rem !important;
+  }
+  #hero-slider-main > div.relative.z-20.flex.flex-wrap.items-center.justify-between.gap-3 > div:last-child > div,
+  #hero-slider-main #btn-hero-toggle-sound {
+    padding-inline: .45rem !important;
+    font-size: 7.5px !important;
+  }
+  #hero-slider-main > div.relative.z-20.my-auto.py-4 h1 {
+    font-size: clamp(1.9rem, 10vw, 2.5rem) !important;
+  }
+}
