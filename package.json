@@ -1,12 +1,20 @@
 {
-  "name": "react-example",
+  "name": "bytes-brew-gaming-cafe-epr",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
-    "start": "node dist/server.cjs",
+    "dev": "tsx --import ./src/server/catalogBootstrap.ts --import ./src/server/preload.ts server.ts",
+    "build": "vite build && esbuild src/server/catalogBootstrap.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/catalogBootstrap.mjs && esbuild src/server/preload.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/preload.mjs && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "node --import ./dist/catalogBootstrap.mjs --import ./dist/preload.mjs dist/server.cjs",
+    "db:init": "tsx scripts/init-mongodb.ts",
+    "db:bootstrap-admin": "tsx scripts/bootstrap-admin.ts",
+    "financial:reconcile": "tsx scripts/reconcile-financial-ledger.ts",
+    "financial:reconcile-razorpay": "tsx scripts/reconcile-razorpay-captures.ts",
+    "test:production": "tsx scripts/production-integration-check.ts",
+    "test:mongodb": "tsx scripts/mongodb-production-integration.ts",
+    "test:security": "tsx scripts/security-contract-check.ts",
+    "audit:production": "tsx scripts/production-audit.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
@@ -14,25 +22,27 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
-    "@types/nodemailer": "^8.0.1",
-    "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
+    "mongodb": "^6.20.0",
     "motion": "^12.23.24",
     "nodemailer": "^10.0.1",
+    "pdfkit": "^0.17.2",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pdfkit": "^0.13.8",
+    "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3",
-    "@types/express": "^4.17.21"
+    "typescript": "~5.8.2"
   }
 }
