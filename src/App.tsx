@@ -13,6 +13,7 @@ import { ProductionConsoleGamesModal } from './components/ProductionConsoleGames
 import { AuthModal } from './components/AuthModal';
 import { Footer } from './components/Footer';
 import { CafeStatusBar } from './components/CafeStatusBar';
+import { PasswordResetPage } from './components/PasswordResetPage';
 import { GamingServiceCategory } from './types';
 
 const MainAppLayout: React.FC = () => {
@@ -45,4 +46,7 @@ const MainAppLayout: React.FC = () => {
   </div>;
 };
 
-export default function App() { return <CafeProvider><MainAppLayout /></CafeProvider>; }
+export default function App() {
+  const resetToken = new URLSearchParams(window.location.search).get('resetToken');
+  return <CafeProvider>{resetToken ? <PasswordResetPage token={resetToken} /> : <MainAppLayout />}</CafeProvider>;
+}
