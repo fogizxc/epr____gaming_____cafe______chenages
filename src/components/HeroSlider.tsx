@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCafe } from '../context/CafeContext';
 import { HeroGameSlide, GamingServiceCategory } from '../types';
-import {
-  Star,
-  ChevronRight,
-  ChevronLeft,
-  Maximize2,
-  Volume2,
-  VolumeX,
-  Play
-} from 'lucide-react';
+import { Star } from 'lucide-react';
 
 interface HeroSliderProps {
   onSelectGameForBooking?: (game: HeroGameSlide, category?: GamingServiceCategory) => void;
@@ -22,7 +14,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 }) => {
   const { heroGames } = useCafe();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(true);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [slideProgress, setSlideProgress] = useState(0);
 
@@ -36,11 +27,11 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentGame = heroGames[currentIndex] || heroGames[0];
-  const SLIDE_DURATION = 7000; // 7.0s per slide (extended video time)
+  const SLIDE_DURATION = 5000; // 5 seconds per slide
 
-  // Active Auto-sliding timer that runs reliably
+  // Automatic hero rotation every 5 seconds.
   useEffect(() => {
-    if (isDragging) return;
+    if (heroGames.length <= 1 || isDragging) return;
 
     const stepMs = 50;
     const interval = setInterval(() => {
@@ -56,44 +47,17 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     return () => clearInterval(interval);
   }, [isDragging, heroGames.length]);
 
-  // Reset slide progress and video state when slide index changes
+  // Reset slide progress and restart the background video when the slide changes.
   useEffect(() => {
     setSlideProgress(0);
     setIsVideoLoaded(false);
 
-    // Auto-play the video when slide changes
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.muted = isMuted;
-      videoRef.current.play().catch(() => {
-        // Fallback for browser autoplay policies
-        if (videoRef.current) {
-          videoRef.current.muted = true;
-          videoRef.current.play().catch(() => {});
-        }
-      });
+      videoRef.current.muted = true;
+      videoRef.current.play().catch(() => {});
     }
-  }, [currentIndex, isMuted]);
-
-  // Handle Mute / Unmute
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!videoRef.current) return;
-    const nextMuted = !isMuted;
-    videoRef.current.muted = nextMuted;
-    setIsMuted(nextMuted);
-  };
-
-  // Next / Previous Slide
-  const handlePrevSlide = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
-  };
-
-  const handleNextSlide = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % heroGames.length);
-  };
+  }, [currentIndex]);
 
   // Pointer / Mouse drag and click handlers
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -107,9 +71,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
     const diffX = e.clientX - startX;
-    if (Math.abs(diffX) > 8) {
-      setHasMoved(true);
-    }
+    if (Math.abs(diffX) > 8) setHasMoved(true);
     setCurrentTranslate(diffX);
   };
 
@@ -120,19 +82,18 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     const diffX = e.clientX - startX;
     const diffY = e.clientY - startY;
 
-    // If pointer was simply clicked without dragging -> redirect to overview page!
+    // Simple click opens the game overview.
     if (!hasMoved && Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
       setCurrentTranslate(0);
       onOpenOverview(currentGame);
       return;
     }
 
-    // Swipe threshold
+    // Swipe navigation remains available on touch / pointer devices,
+    // while the visible arrow controls have been removed.
     if (currentTranslate < -60) {
-      // Swiped left -> next
       setCurrentIndex((prev) => (prev + 1) % heroGames.length);
     } else if (currentTranslate > 60) {
-      // Swiped right -> prev
       setCurrentIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
     }
     setCurrentTranslate(0);
@@ -144,9 +105,11 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     setHasMoved(false);
   };
 
+  if (!currentGame) return null;
+
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Full-width Panoramic Hero Screen - Auto-Sliding with Live Background Video */}
+      {/* Full-width Panoramic Hero Screen - Auto-sliding every 5 seconds */}
       <div
         id="hero-slider-main"
         ref={sliderRef}
@@ -158,9 +121,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
         style={{ touchAction: 'pan-y' }}
         title="Click anywhere to view game overview & gameplay reels"
       >
-        {/* Background Media Container: Poster Fallback + Live 4K Video */}
+        {/* Background Media Container: Poster Fallback + Auto-Playing Video */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          {/* Fallback Artwork (loads instantly) */}
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
             style={{
@@ -170,7 +132,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
             }}
           />
 
-          {/* Live Auto-Playing Background Video */}
           {currentGame.videoPreviewUrl && (
             <video
               ref={videoRef}
@@ -178,7 +139,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
               src={currentGame.videoPreviewUrl}
               autoPlay
               loop
-              muted={isMuted}
+              muted
               playsInline
               onLoadedData={() => setIsVideoLoaded(true)}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
@@ -191,11 +152,11 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           )}
         </div>
 
-        {/* Gradient Overlays for deep contrast and cinematic typography */}
+        {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent z-10 pointer-events-none" />
 
-        {/* Auto-Slide Progress Bar at top of hero */}
+        {/* Auto-Slide Progress Bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-30 pointer-events-none">
           <div
             className="h-full bg-gradient-to-r from-red-600 via-red-500 to-amber-400 transition-all duration-75"
@@ -203,7 +164,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           />
         </div>
 
-        {/* Top Meta Bar: Category Tag, Video Controls & Game Tags */}
+        {/* Top Meta Bar */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 pointer-events-none">
             <span className="bg-red-600 text-white text-[11px] uppercase font-black tracking-widest px-3.5 py-1.5 rounded-full shadow-md">
@@ -218,33 +179,9 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
               </span>
             ))}
           </div>
-
-          {/* Video Sound Switcher */}
-          <div className="flex items-center gap-2.5">
-            {/* Video Sound Toggle Button */}
-            <button
-              id="btn-hero-toggle-sound"
-              type="button"
-              onClick={toggleMute}
-              className="flex items-center gap-1.5 bg-black/70 hover:bg-white/20 text-white backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full text-[11px] font-mono uppercase tracking-wider transition cursor-pointer active:scale-95 z-30"
-              title={isMuted ? 'Unmute video reel audio' : 'Mute video reel audio'}
-            >
-              {isMuted ? (
-                <>
-                  <VolumeX className="w-3.5 h-3.5 text-white/70" />
-                  <span className="hidden sm:inline">Unmute</span>
-                </>
-              ) : (
-                <>
-                  <Volume2 className="w-3.5 h-3.5 text-red-500 animate-pulse" />
-                  <span className="text-red-400 hidden sm:inline">Sound On</span>
-                </>
-              )}
-            </button>
-          </div>
         </div>
 
-        {/* Center / Hero Information (Game Title & Subtitle) */}
+        {/* Center / Hero Information */}
         <div className="relative z-20 my-auto py-4 sm:py-8 max-w-3xl pointer-events-none">
           <div className="flex flex-wrap items-center gap-2 text-red-500 mb-2 sm:mb-3 font-mono text-[11px] sm:text-xs uppercase tracking-widest font-semibold">
             <span>{currentGame.category}</span>
@@ -264,7 +201,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           </p>
         </div>
 
-        {/* Bottom Bar: Platforms & Live Lounge Presence */}
+        {/* Bottom Bar */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 text-xs text-white/60 pt-4 sm:pt-6 border-t border-white/15 pointer-events-none">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-mono text-white/40">
@@ -282,7 +219,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
             </div>
           </div>
 
-          {/* Active Player Stack */}
           <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] sm:text-[11px]">
             <div className="flex -space-x-1.5">
               <img
@@ -301,27 +237,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
             </span>
           </div>
         </div>
-
-        {/* Left & Right Arrow Slide Navigation Buttons */}
-        <button
-          id="btn-hero-prev-slide"
-          type="button"
-          onClick={handlePrevSlide}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-white text-white hover:text-black border border-white/20 hover:border-white flex items-center justify-center transition cursor-pointer shadow-xl active:scale-95"
-          title="Previous game slide"
-        >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
-
-        <button
-          id="btn-hero-next-slide"
-          type="button"
-          onClick={handleNextSlide}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-11 sm:h-11 rounded-full bg-black/60 hover:bg-white text-white hover:text-black border border-white/20 hover:border-white flex items-center justify-center transition cursor-pointer shadow-xl active:scale-95"
-          title="Next game slide"
-        >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
       </div>
     </div>
   );
