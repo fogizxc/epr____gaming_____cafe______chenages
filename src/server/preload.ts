@@ -9,6 +9,7 @@ import { startSessionLifecycle } from "./sessionLifecycle.js";
 import { startFnbLifecycle } from "./fnbLifecycle.js";
 import { handleProductionGetStations, handleProductionAvailability, handleProductionCreateBooking } from "../services/productionBookingHandlers.js";
 import { handleProductionAvailabilitySummary } from "../services/productionAvailabilitySummary.js";
+import { handleProductionRescheduleBooking } from "../services/productionRescheduleHandler.js";
 import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionWalletDebit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
@@ -50,6 +51,7 @@ const productionOverrides: Record<string, any> = {
   "POST /api/bookings": handleProductionCreateBooking,
   "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
   "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
+  "POST /api/bookings/:id/reschedule": handleProductionRescheduleBooking,
   "POST /api/sessions/:id/extend": handleProductionExtendSession,
   "POST /api/sessions/:id/end": handleProductionEndSession,
   "GET /api/sessions/me": handleProductionMyActiveSession,
