@@ -86,3 +86,20 @@
   }
 }
 
+/* Center the footer navigation and social controls at every breakpoint.
+   This matches the centered composition requested for the home page. */
+#footer-requested-nav-links,
+#footer-social-logos-row {
+  justify-content: center !important;
+  width: 100%;
+}
+
+#footer-requested-nav-links {
+  column-gap: clamp(1.25rem, 3vw, 2.75rem);
+  row-gap: 0.75rem;
+}
+
+#footer-social-logos-row {
+  gap: 1.25rem;
+}
+
