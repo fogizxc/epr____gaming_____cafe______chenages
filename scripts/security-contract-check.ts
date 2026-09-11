@@ -2,6 +2,9 @@ import fs from "node:fs";
 
 const security = fs.readFileSync("src/server/security.ts", "utf8");
 const preload = fs.readFileSync("src/server/preload.ts", "utf8");
+const authRoutes = fs.readFileSync("src/server/authRoutes.ts", "utf8");
+const loginGuard = fs.readFileSync("src/server/loginGuard.ts", "utf8");
+const cafeContext = fs.readFileSync("src/context/CafeContext.tsx", "utf8");
 const requiredPublic = [
   "/api/health",
   "/api/ready",
@@ -37,4 +40,17 @@ for (const marker of ["randomUUID", "X-Request-ID", "AUTH_RATE_LIMIT", "Retry-Af
 }
 if (security.includes("x-forwarded-for") && !security.includes("req.ip")) throw new Error("SECURITY_CLIENT_IP_MUST_USE_TRUST_PROXY_CONFIGURATION");
 
-console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, and Sheets sync protection enabled).`);
+for (const marker of ["isLoginBlocked", "recordLoginFailure", "clearLoginFailures", "Too many failed login attempts"]) {
+  if (!authRoutes.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_NOT_WIRED:${marker}`);
+}
+for (const marker of ["MAX_FAILURES", "LOCK_MS", "auth_login_guards", "tokenHash", "password"]) {
+  if (!loginGuard.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_INCOMPLETE:${marker}`);
+}
+if (cafeContext.includes("password: account.password") || cafeContext.includes("password: account.passwordHash")) {
+  throw new Error("SECURITY_CLIENT_ACCOUNT_SYNC_MUST_NOT_EXPORT_PASSWORDS");
+}
+if (!cafeContext.includes("Account creation is handled by production authentication service")) {
+  throw new Error("SECURITY_LEGACY_CLIENT_ACCOUNT_CREATION_NOT_DISABLED");
+}
+
+console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, login abuse guard, and credential-sync protection enabled).`);
