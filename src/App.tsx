@@ -14,6 +14,7 @@ import { AuthModal } from './components/AuthModal';
 import { Footer } from './components/Footer';
 import { CafeStatusBar } from './components/CafeStatusBar';
 import { PasswordResetPage } from './components/PasswordResetPage';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import { GamingServiceCategory } from './types';
 
 const MainAppLayout: React.FC = () => {
@@ -25,8 +26,6 @@ const MainAppLayout: React.FC = () => {
   const handleOpenQuickWalkIn = () => setShowWalkInModal(true);
   const handleOpenFnb = (sessionId: string) => setFnbSessionId(sessionId);
 
-  // Every in-app section/navigation change starts at the top of the new page.
-  // This prevents the previous section's scroll position from carrying over.
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeNav, currentRole]);
@@ -54,5 +53,5 @@ const MainAppLayout: React.FC = () => {
 
 export default function App() {
   const resetToken = new URLSearchParams(window.location.search).get('resetToken');
-  return <CafeProvider>{resetToken ? <PasswordResetPage token={resetToken} /> : <MainAppLayout />}</CafeProvider>;
+  return <GlobalErrorBoundary><CafeProvider>{resetToken ? <PasswordResetPage token={resetToken} /> : <MainAppLayout />}</CafeProvider></GlobalErrorBoundary>;
 }
