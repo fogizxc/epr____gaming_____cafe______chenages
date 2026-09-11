@@ -2,7 +2,7 @@ name: Publish production image
 
 on:
   push:
-    branches: [production-hardening]
+    branches: [main, production-hardening, production-integration]
   workflow_dispatch:
 
 permissions:
@@ -35,9 +35,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/bytes-brew-gaming-cafe-epr
           tags: |
-            type=raw,value=production
+            type=raw,value=production,enable={{is_default_branch}}
+            type=ref,event=branch
             type=sha
 
       - name: Build and push
