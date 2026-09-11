@@ -9,6 +9,8 @@ const PUBLIC_EXACT = new Set([
   "/api/auth/login",
   "/api/auth/refresh",
   "/api/auth/logout",
+  "/api/auth/password-reset/request",
+  "/api/auth/password-reset/complete",
   "/api/payments/webhook",
   "/api/membership/payment-webhook",
   "/api/fnb/payment-webhook",
@@ -27,16 +29,10 @@ const AUTH_RATE_WINDOW_MS = 60_000;
 const AUTH_RATE_LIMIT = 20;
 const MAX_RATE_BUCKETS = 10_000;
 
-function startsWithAny(path: string, prefixes: string[]) {
-  return prefixes.some(prefix => path === prefix || path.startsWith(prefix));
-}
-
-function clientKey(req: Request) {
-  return req.ip || req.socket.remoteAddress || "unknown";
-}
-
+function startsWithAny(path: string, prefixes: string[]) { return prefixes.some(prefix => path === prefix || path.startsWith(prefix)); }
+function clientKey(req: Request) { return req.ip || req.socket.remoteAddress || "unknown"; }
 function isRateLimited(req: Request) {
-  if (!startsWithAny(req.path, ["/api/auth/login", "/api/auth/register", "/api/auth/refresh"])) return false;
+  if (!startsWithAny(req.path, ["/api/auth/login", "/api/auth/register", "/api/auth/refresh", "/api/auth/password-reset/request", "/api/auth/password-reset/complete"])) return false;
   const now = Date.now();
   const key = `${req.method}:${req.path}:${clientKey(req)}`;
   const current = authRateBuckets.get(key);
@@ -48,13 +44,11 @@ function isRateLimited(req: Request) {
   current.count += 1;
   return current.count > AUTH_RATE_LIMIT;
 }
-
 function applyRequestId(_req: Request, res: Response) {
   const requestId = randomUUID();
   res.locals.requestId = requestId;
   res.setHeader("X-Request-ID", requestId);
 }
-
 function applyApiSecurityHeaders(req: Request, res: Response) {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
@@ -73,7 +67,6 @@ function applyApiSecurityHeaders(req: Request, res: Response) {
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   }
 }
-
 export function apiSecurityPolicy(req: Request, res: Response, next: NextFunction) {
   applyRequestId(req, res);
   if (req.path.startsWith("/api/")) applyApiSecurityHeaders(req, res);
@@ -91,7 +84,4 @@ export function apiSecurityPolicy(req: Request, res: Response, next: NextFunctio
   if (startsWithAny(req.path, CUSTOMER_PREFIXES)) return requireAuth(req as any, res, next);
   return res.status(401).json({ success: false, error: "Authentication required", requestId: res.locals.requestId });
 }
-
-export function attachOptionalAuth(req: Request, res: Response, next: NextFunction) {
-  return optionalAuth(req as any, res, next);
-}
+export function attachOptionalAuth(req: Request, res: Response, next: NextFunction) { return optionalAuth(req as any, res, next); }
