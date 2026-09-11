@@ -15,6 +15,9 @@ import {
 import { clearLoginFailures, isLoginBlocked, recordLoginFailure } from "./loginGuard.js";
 
 const VALID_ROLES: AppRole[] = ["CUSTOMER", "EMPLOYEE", "ADMIN", "SUPER_ADMIN"];
+const REFRESH_COOKIE = "nexus_refresh_token";
+const REFRESH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+const CLIENT_REFRESH_MARKER = "http-only-cookie";
 
 function publicUser(user: any) {
   return {
@@ -25,6 +28,32 @@ function publicUser(user: any) {
 
 function validatePassword(password: unknown) {
   return typeof password === "string" && password.length >= 8 && password.length <= 128;
+}
+
+function readCookie(req: Request, name: string) {
+  const header = req.header("cookie") || "";
+  for (const part of header.split(";")) {
+    const index = part.indexOf("=");
+    if (index < 0) continue;
+    const key = part.slice(0, index).trim();
+    if (key !== name) continue;
+    try { return decodeURIComponent(part.slice(index + 1).trim()); } catch { return part.slice(index + 1).trim(); }
+  }
+  return "";
+}
+
+function setRefreshCookie(res: Response, token: string) {
+  res.cookie(REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/auth",
+    maxAge: REFRESH_COOKIE_MAX_AGE,
+  });
+}
+
+function clearRefreshCookie(res: Response) {
+  res.clearCookie(REFRESH_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/auth" });
 }
 
 export function registerAuthRoutes(app: Express) {
@@ -51,7 +80,8 @@ export function registerAuthRoutes(app: Express) {
       const created = { ...user, _id: result.insertedId };
       const accessToken = createAccessToken({ id: String(result.insertedId), email: created.email, name: created.name, role: created.role, permissions: [] });
       const refreshToken = await createRefreshToken(String(result.insertedId));
-      return res.status(201).json({ success: true, accessToken, refreshToken, user: publicUser(created) });
+      setRefreshCookie(res, refreshToken);
+      return res.status(201).json({ success: true, accessToken, refreshToken: CLIENT_REFRESH_MARKER, user: publicUser(created) });
     } catch (error: any) {
       if (error?.code === 11000) return res.status(409).json({ success: false, error: "An account with that email or phone already exists" });
       console.error("auth/register", error);
@@ -81,8 +111,9 @@ export function registerAuthRoutes(app: Express) {
       const permissions = Array.isArray(user.permissions) ? user.permissions : [];
       const accessToken = createAccessToken({ id: String(user._id), email: user.email, name: user.name, role, permissions });
       const refreshToken = await createRefreshToken(String(user._id));
+      setRefreshCookie(res, refreshToken);
       await db.collection("users").updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date(), updatedAt: new Date() } });
-      return res.json({ success: true, accessToken, refreshToken, user: publicUser(user) });
+      return res.json({ success: true, accessToken, refreshToken: CLIENT_REFRESH_MARKER, user: publicUser(user) });
     } catch (error) {
       console.error("auth/login", error);
       return res.status(500).json({ success: false, error: "Unable to authenticate" });
@@ -91,11 +122,15 @@ export function registerAuthRoutes(app: Express) {
 
   app.post("/api/auth/refresh", async (req: Request, res: Response) => {
     try {
-      const refreshToken = typeof req.body?.refreshToken === "string" ? req.body.refreshToken : "";
+      const refreshToken = readCookie(req, REFRESH_COOKIE) || (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : "");
       if (!refreshToken || refreshToken.length > 512) return res.status(401).json({ success: false, error: "Refresh token required" });
       const rotated = await rotateRefreshToken(refreshToken);
-      if (!rotated) return res.status(401).json({ success: false, error: "Refresh token expired or revoked" });
-      return res.json({ success: true, ...rotated });
+      if (!rotated) {
+        clearRefreshCookie(res);
+        return res.status(401).json({ success: false, error: "Refresh token expired or revoked" });
+      }
+      setRefreshCookie(res, rotated.refreshToken);
+      return res.json({ success: true, accessToken: rotated.accessToken, refreshToken: CLIENT_REFRESH_MARKER, user: rotated.user });
     } catch (error) {
       console.error("auth/refresh", error);
       return res.status(500).json({ success: false, error: "Unable to refresh session" });
@@ -104,10 +139,13 @@ export function registerAuthRoutes(app: Express) {
 
   app.post("/api/auth/logout", async (req: Request, res: Response) => {
     try {
-      if (typeof req.body?.refreshToken === "string") await revokeRefreshToken(req.body.refreshToken);
+      const refreshToken = readCookie(req, REFRESH_COOKIE) || (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : "");
+      if (refreshToken && refreshToken !== CLIENT_REFRESH_MARKER) await revokeRefreshToken(refreshToken);
+      clearRefreshCookie(res);
       return res.json({ success: true });
     } catch (error) {
       console.error("auth/logout", error);
+      clearRefreshCookie(res);
       return res.status(500).json({ success: false, error: "Unable to log out" });
     }
   });
