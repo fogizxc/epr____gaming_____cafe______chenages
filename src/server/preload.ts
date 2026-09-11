@@ -8,6 +8,7 @@ import { getMongoDb } from "./mongodb.js";
 import { startSessionLifecycle } from "./sessionLifecycle.js";
 import { startFnbLifecycle } from "./fnbLifecycle.js";
 import { handleProductionGetStations, handleProductionAvailability, handleProductionCreateBooking } from "../services/productionBookingHandlers.js";
+import { handleProductionAvailabilitySummary } from "../services/productionAvailabilitySummary.js";
 import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionWalletDebit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
@@ -45,6 +46,7 @@ const methods = ["get", "post", "put", "patch", "delete"] as const;
 const productionOverrides: Record<string, any> = {
   "GET /api/stations": handleProductionGetStations,
   "GET /api/stations/:id/availability": handleProductionAvailability,
+  "GET /api/stations/:id/availability-summary": handleProductionAvailabilitySummary,
   "POST /api/bookings": handleProductionCreateBooking,
   "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
   "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
@@ -152,36 +154,17 @@ const originalListen = (express.application as any).listen;
     try {
       const db = await getMongoDb();
       await db.command({ ping: 1 });
-      return res.json({
-        status: "ready",
-        timestamp: new Date().toISOString(),
-        dependencies: { mongodb: "ok" },
-      });
+      return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } });
     } catch {
-      return res.status(503).json({
-        status: "not_ready",
-        timestamp: new Date().toISOString(),
-        dependencies: { mongodb: "unavailable" },
-      });
+      return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } });
     }
   });
-  void ensureAuthIndexes()
-    .then(() => getMongoDb())
-    .then(ensureLoginGuardIndexes)
-    .then(() => ensurePasswordResetIndexes())
-    .catch((error) => console.error("Authentication index bootstrap failed:", error));
+  void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).catch((error) => console.error("Authentication index bootstrap failed:", error));
   startSessionLifecycle();
   startFnbLifecycle();
   return originalListen.apply(this, args);
 };
 
-/**
- * Compatibility entry point used by server.ts.
- * The production route wiring is installed at module load time above so it
- * applies to every Express application created by the server. Calling this
- * function keeps the explicit preload contract without double-registering
- * routes or lifecycle workers.
- */
 export function applyProductionPreload(_app: express.Application): void {
-  // Intentionally empty: Express application methods/listen are patched above.
+  // Express application methods/listen are patched above.
 }
