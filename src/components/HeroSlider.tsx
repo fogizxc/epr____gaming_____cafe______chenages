@@ -17,7 +17,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [slideProgress, setSlideProgress] = useState(0);
 
-  // Drag / swipe states
+  // Touch / pointer swipe states
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [startY, setStartY] = useState(0);
@@ -59,8 +59,12 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     }
   }, [currentIndex]);
 
-  // Pointer / Mouse drag and click handlers
-  const handlePointerDown = (e: React.PointerEvent) => {
+  // Start a swipe gesture and capture the pointer so the gesture remains
+  // reliable even when the finger/mouse moves outside the hero element.
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    sliderRef.current?.setPointerCapture?.(e.pointerId);
     setIsDragging(true);
     setStartX(e.clientX);
     setStartY(e.clientY);
@@ -68,38 +72,65 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     setHasMoved(false);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDragging) return;
-    const diffX = e.clientX - startX;
-    if (Math.abs(diffX) > 8) setHasMoved(true);
-    setCurrentTranslate(diffX);
-  };
-
-  const handlePointerUp = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setIsDragging(false);
 
     const diffX = e.clientX - startX;
     const diffY = e.clientY - startY;
 
-    // Simple click opens the game overview.
-    if (!hasMoved && Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
+    // Ignore mostly-vertical movement so normal page scrolling still works.
+    if (!hasMoved && Math.abs(diffY) > Math.abs(diffX) && Math.abs(diffY) > 10) {
+      return;
+    }
+
+    if (Math.abs(diffX) > 8) setHasMoved(true);
+    setCurrentTranslate(diffX);
+  };
+
+  const finishSwipe = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDragging) return;
+
+    const diffX = e.clientX - startX;
+    const diffY = e.clientY - startY;
+    const wasClick = !hasMoved && Math.abs(diffX) < 10 && Math.abs(diffY) < 10;
+    const swipeThreshold = Math.max(50, Math.min(100, (sliderRef.current?.clientWidth || 400) * 0.12));
+
+    setIsDragging(false);
+
+    if (sliderRef.current?.hasPointerCapture?.(e.pointerId)) {
+      sliderRef.current.releasePointerCapture(e.pointerId);
+    }
+
+    // A tap opens the game overview; a horizontal swipe changes the hero slide.
+    if (wasClick) {
       setCurrentTranslate(0);
+      setHasMoved(false);
       onOpenOverview(currentGame);
       return;
     }
 
-    // Swipe navigation remains available on touch / pointer devices,
-    // while the visible arrow controls have been removed.
-    if (currentTranslate < -60) {
-      setCurrentIndex((prev) => (prev + 1) % heroGames.length);
-    } else if (currentTranslate > 60) {
-      setCurrentIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
+    if (Math.abs(diffX) >= swipeThreshold && Math.abs(diffX) > Math.abs(diffY)) {
+      if (diffX < 0) {
+        // Swipe left -> next game
+        setCurrentIndex((prev) => (prev + 1) % heroGames.length);
+      } else {
+        // Swipe right -> previous game
+        setCurrentIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
+      }
     }
+
     setCurrentTranslate(0);
+    setHasMoved(false);
   };
 
-  const handlePointerCancel = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    finishSwipe(e);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (sliderRef.current?.hasPointerCapture?.(e.pointerId)) {
+      sliderRef.current.releasePointerCapture(e.pointerId);
+    }
     setIsDragging(false);
     setCurrentTranslate(0);
     setHasMoved(false);
@@ -109,7 +140,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Full-width Panoramic Hero Screen - Auto-sliding every 5 seconds */}
+      {/* Full-width Panoramic Hero Screen - Auto-sliding every 5 seconds + touch swipe */}
       <div
         id="hero-slider-main"
         ref={sliderRef}
@@ -119,7 +150,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
         onPointerCancel={handlePointerCancel}
         className="group relative w-full rounded-2xl sm:rounded-3xl overflow-hidden bg-[#050505] border border-white/10 select-none cursor-pointer shadow-[0_0_35px_rgba(0,0,0,0.85)] hover:border-white/30 transition-all min-h-[460px] sm:min-h-[580px] lg:min-h-[700px] xl:min-h-[760px] flex flex-col justify-between p-5 sm:p-8 lg:p-14"
         style={{ touchAction: 'pan-y' }}
-        title="Click anywhere to view game overview & gameplay reels"
+        title="Swipe left or right to change games • Tap to view game overview"
       >
         {/* Background Media Container: Poster Fallback + Auto-Playing Video */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
