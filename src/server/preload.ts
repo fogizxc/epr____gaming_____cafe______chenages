@@ -10,6 +10,7 @@ import { startFnbLifecycle } from "./fnbLifecycle.js";
 import { handleProductionGetStations, handleProductionAvailability, handleProductionCreateBooking } from "../services/productionBookingHandlers.js";
 import { handleProductionAvailabilitySummary } from "../services/productionAvailabilitySummary.js";
 import { handleProductionRescheduleBooking } from "../services/productionRescheduleHandler.js";
+import { handleProductionCustomerBookings } from "../services/productionCustomerBookingsHandler.js";
 import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionWalletDebit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
@@ -34,13 +35,7 @@ import { handleProductionRazorpayPaymentWebhook, handleProductionRazorpayMembers
 const originalJson = (express as any).json;
 (express as any).json = function(options: any = {}) {
   const callerVerify = options.verify;
-  return originalJson({
-    ...options,
-    verify: (req: any, res: any, buf: Buffer, encoding: string) => {
-      req.rawBody = Buffer.from(buf);
-      if (typeof callerVerify === "function") callerVerify(req, res, buf, encoding);
-    },
-  });
+  return originalJson({ ...options, verify: (req: any, res: any, buf: Buffer, encoding: string) => { req.rawBody = Buffer.from(buf); if (typeof callerVerify === "function") callerVerify(req, res, buf, encoding); } });
 };
 
 const methods = ["get", "post", "put", "patch", "delete"] as const;
@@ -49,6 +44,7 @@ const productionOverrides: Record<string, any> = {
   "GET /api/stations/:id/availability": handleProductionAvailability,
   "GET /api/stations/:id/availability-summary": handleProductionAvailabilitySummary,
   "POST /api/bookings": handleProductionCreateBooking,
+  "GET /api/bookings/me": handleProductionCustomerBookings,
   "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
   "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
   "POST /api/bookings/:id/reschedule": handleProductionRescheduleBooking,
@@ -153,13 +149,8 @@ const originalListen = (express.application as any).listen;
   this.post("/api/integrations/google-sheets/sync", apiSecurityPolicy, handleGoogleSheetsSync);
   this.post("/api/integrations/google-forms/tournament-response", apiSecurityPolicy, handleTournamentFormResponse);
   this.get("/api/ready", async (_req: any, res: any) => {
-    try {
-      const db = await getMongoDb();
-      await db.command({ ping: 1 });
-      return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } });
-    } catch {
-      return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } });
-    }
+    try { const db = await getMongoDb(); await db.command({ ping: 1 }); return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } }); }
+    catch { return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } }); }
   });
   void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).catch((error) => console.error("Authentication index bootstrap failed:", error));
   startSessionLifecycle();
