@@ -15,7 +15,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const { heroGames } = useCafe();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const [slideProgress, setSlideProgress] = useState(0);
 
   // Touch / pointer swipe states
   const [isDragging, setIsDragging] = useState(false);
@@ -27,29 +26,21 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentGame = heroGames[currentIndex] || heroGames[0];
-  const SLIDE_DURATION = 5000; // 5 seconds per slide
+  const SLIDE_DURATION = 5000;
 
-  // Automatic hero rotation every 5 seconds.
+  // Automatic hero rotation stays enabled without a visible progress bar.
   useEffect(() => {
     if (heroGames.length <= 1 || isDragging) return;
 
-    const stepMs = 50;
-    const interval = setInterval(() => {
-      setSlideProgress((prev) => {
-        if (prev >= 100) {
-          setCurrentIndex((curr) => (curr + 1) % heroGames.length);
-          return 0;
-        }
-        return prev + (stepMs / SLIDE_DURATION) * 100;
-      });
-    }, stepMs);
+    const timer = window.setTimeout(() => {
+      setCurrentIndex((curr) => (curr + 1) % heroGames.length);
+    }, SLIDE_DURATION);
 
-    return () => clearInterval(interval);
-  }, [isDragging, heroGames.length]);
+    return () => window.clearTimeout(timer);
+  }, [currentIndex, isDragging, heroGames.length]);
 
-  // Reset slide progress and restart the background video when the slide changes.
+  // Restart the background video when the hero changes.
   useEffect(() => {
-    setSlideProgress(0);
     setIsVideoLoaded(false);
 
     if (videoRef.current) {
@@ -59,8 +50,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     }
   }, [currentIndex]);
 
-  // Start a swipe gesture and capture the pointer so the gesture remains
-  // reliable even when the finger/mouse moves outside the hero element.
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -101,7 +90,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
       sliderRef.current.releasePointerCapture(e.pointerId);
     }
 
-    // A tap opens the game overview; a horizontal swipe changes the hero slide.
     if (wasClick) {
       setCurrentTranslate(0);
       setHasMoved(false);
@@ -111,10 +99,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
     if (Math.abs(diffX) >= swipeThreshold && Math.abs(diffX) > Math.abs(diffY)) {
       if (diffX < 0) {
-        // Swipe left -> next game
         setCurrentIndex((prev) => (prev + 1) % heroGames.length);
       } else {
-        // Swipe right -> previous game
         setCurrentIndex((prev) => (prev - 1 + heroGames.length) % heroGames.length);
       }
     }
@@ -123,9 +109,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     setHasMoved(false);
   };
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    finishSwipe(e);
-  };
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => finishSwipe(e);
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
     if (sliderRef.current?.hasPointerCapture?.(e.pointerId)) {
@@ -140,7 +124,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Full-width Panoramic Hero Screen - Auto-sliding every 5 seconds + touch swipe */}
       <div
         id="hero-slider-main"
         ref={sliderRef}
@@ -152,7 +135,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
         style={{ touchAction: 'pan-y' }}
         title="Swipe left or right to change games • Tap to view game overview"
       >
-        {/* Background Media Container: Poster Fallback + Auto-Playing Video */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div
             className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
@@ -183,19 +165,9 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           )}
         </div>
 
-        {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent z-10 pointer-events-none" />
 
-        {/* Auto-Slide Progress Bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-30 pointer-events-none">
-          <div
-            className="h-full bg-gradient-to-r from-red-600 via-red-500 to-amber-400 transition-all duration-75"
-            style={{ width: `${slideProgress}%` }}
-          />
-        </div>
-
-        {/* Top Meta Bar */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 pointer-events-none">
             <span className="bg-red-600 text-white text-[11px] uppercase font-black tracking-widest px-3.5 py-1.5 rounded-full shadow-md">
@@ -212,7 +184,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           </div>
         </div>
 
-        {/* Center / Hero Information */}
         <div className="relative z-20 my-auto py-4 sm:py-8 max-w-3xl pointer-events-none">
           <div className="flex flex-wrap items-center gap-2 text-red-500 mb-2 sm:mb-3 font-mono text-[11px] sm:text-xs uppercase tracking-widest font-semibold">
             <span>{currentGame.category}</span>
@@ -232,7 +203,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
           </p>
         </div>
 
-        {/* Bottom Bar */}
         <div className="relative z-20 flex flex-wrap items-center justify-between gap-3 text-xs text-white/60 pt-4 sm:pt-6 border-t border-white/15 pointer-events-none">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <span className="text-[10px] sm:text-[11px] uppercase tracking-widest font-mono text-white/40">
