@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Search, Bell } from 'lucide-react';
 import { useCafe } from '../context/CafeContext';
 
+const SPIDER_MAN_ART = 'https://img.favpng.com/10/16/8/watercolor-spiderman-spider-man-sitting-in-classic-pose-sZsjjn9u.jpg';
+
 export const Header: React.FC = () => {
   const { notifications, markNotificationAsRead } = useCafe();
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,9 +16,16 @@ export const Header: React.FC = () => {
       className="sticky top-0 z-40 w-full border-b border-white/10 bg-[#050505]/90 px-4 py-3 backdrop-blur-2xl sm:px-6 sm:py-4 lg:px-8"
     >
       <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-3">
-        <div className="flex items-center justify-center sm:justify-start">
-          <div className="select-none text-xl font-black uppercase tracking-[-0.04em] text-white sm:text-2xl">
-            Bytes &amp; Brew<span className="text-red-500">.</span>
+        <div className="flex h-[74px] items-end justify-center sm:h-[86px] sm:justify-start">
+          <div className="relative select-none pb-1 text-xl font-black uppercase tracking-[-0.04em] text-white sm:text-2xl">
+            <span className="relative z-10">Bytes &amp; Brew<span className="text-red-500">.</span></span>
+            <img
+              src={SPIDER_MAN_ART}
+              alt="Spider-Man sitting above the Bytes & Brew logo"
+              aria-hidden="true"
+              loading="eager"
+              className="pointer-events-none absolute bottom-[58%] left-1/2 z-20 h-[72px] w-[118px] -translate-x-1/2 object-contain object-bottom mix-blend-screen drop-shadow-[0_8px_18px_rgba(0,0,0,0.65)] sm:h-[88px] sm:w-[145px]"
+            />
           </div>
         </div>
 
