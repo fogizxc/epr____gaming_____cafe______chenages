@@ -103,3 +103,98 @@
   gap: 1.25rem;
 }
 
+/* ================================================================
+   SPACIOUS CINEMATIC CUSTOMER EXPERIENCE
+   Keep the existing black/red/video identity; reduce visual density.
+   ================================================================ */
+
+/* Give the customer surface a wider canvas without changing the app shell. */
+main:has(#customer-home-dashboard) {
+  max-width: 1600px !important;
+  padding-left: clamp(1rem, 3vw, 4rem) !important;
+  padding-right: clamp(1rem, 3vw, 4rem) !important;
+}
+
+#customer-home-dashboard {
+  gap: clamp(3.5rem, 6vw, 7rem) !important;
+  padding-bottom: clamp(4rem, 8vw, 8rem) !important;
+}
+
+/* Every home section gets deliberate breathing room. */
+#customer-home-dashboard > section {
+  scroll-margin-top: 7rem;
+}
+
+/* Hero gets room to feel like a cinematic landing screen. */
+#customer-home-dashboard > section:first-child {
+  margin-bottom: clamp(0.5rem, 1vw, 1rem);
+}
+
+#hero-slider-main {
+  min-height: clamp(560px, 68vh, 820px) !important;
+  border-radius: clamp(1.25rem, 2vw, 2rem) !important;
+}
+
+/* Make the account/status strip feel like a separate lounge console. */
+#customer-home-dashboard > section:nth-child(2) {
+  padding: clamp(1.5rem, 3vw, 2.5rem) !important;
+  border-radius: 1.5rem !important;
+}
+
+/* Active/upcoming states should not visually collide with the next section. */
+#customer-home-dashboard > section:has(#btn-quick-book) {
+  gap: clamp(1rem, 2vw, 1.5rem) !important;
+}
+
+/* Quick actions become large, breathable tiles instead of a dense toolbar. */
+#customer-home-dashboard > section:has(#btn-quick-book) button {
+  min-height: 150px;
+  padding: clamp(1.25rem, 2vw, 1.75rem) !important;
+  border-radius: 1.25rem !important;
+}
+
+/* Let the video/category area dominate the viewport instead of tiny cards. */
+#customer-home-dashboard > section:has(#btn-quick-book) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1280px) {
+  #customer-home-dashboard > section:has(#btn-quick-book) {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  main:has(#customer-home-dashboard) {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  #customer-home-dashboard {
+    gap: 3rem !important;
+  }
+
+  #hero-slider-main {
+    min-height: 560px !important;
+  }
+
+  #customer-home-dashboard > section:has(#btn-quick-book) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #customer-home-dashboard > section:has(#btn-quick-book) button {
+    min-height: 135px;
+  }
+}
+
+@media (max-width: 420px) {
+  #customer-home-dashboard > section:has(#btn-quick-book) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Spacious game-detail presentation while preserving its existing media. */
+#game-detail-view {
+  max-width: 1500px;
+  margin-inline: auto;
+}
