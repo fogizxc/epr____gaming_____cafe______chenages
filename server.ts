@@ -9,7 +9,7 @@ import { applyProductionPreload } from "./src/server/preload.js";
 
 dotenv.config();
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 let geminiClient: GoogleGenAI | null = null;
 function getGeminiClient(): GoogleGenAI {
