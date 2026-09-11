@@ -8,6 +8,7 @@ const PUBLIC_EXACT = new Set([
   "/api/auth/register",
   "/api/auth/login",
   "/api/auth/refresh",
+  "/api/auth/logout",
   "/api/payments/webhook",
   "/api/membership/payment-webhook",
   "/api/fnb/payment-webhook",
@@ -20,9 +21,6 @@ const CUSTOMER_PREFIXES = ["/api/me", "/api/stations", "/api/bookings", "/api/se
 const STAFF_PREFIXES = ["/api/employee/"];
 const ADMIN_PREFIXES = ["/api/admin/"];
 
-// Lightweight abuse protection for authentication and refresh endpoints. This
-// is deliberately fail-open on unexpected bookkeeping errors and is not a
-// replacement for an edge/WAF rate limiter in a multi-instance deployment.
 type RateBucket = { windowStartedAt: number; count: number };
 const authRateBuckets = new Map<string, RateBucket>();
 const AUTH_RATE_WINDOW_MS = 60_000;
@@ -34,8 +32,6 @@ function startsWithAny(path: string, prefixes: string[]) {
 }
 
 function clientKey(req: Request) {
-  // Express' req.ip respects the application's configured trust-proxy policy;
-  // do not trust an arbitrary X-Forwarded-For header supplied by the client.
   return req.ip || req.socket.remoteAddress || "unknown";
 }
 
@@ -53,7 +49,7 @@ function isRateLimited(req: Request) {
   return current.count > AUTH_RATE_LIMIT;
 }
 
-function applyRequestId(req: Request, res: Response) {
+function applyRequestId(_req: Request, res: Response) {
   const requestId = randomUUID();
   res.locals.requestId = requestId;
   res.setHeader("X-Request-ID", requestId);
