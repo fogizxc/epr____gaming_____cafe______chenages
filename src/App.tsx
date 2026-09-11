@@ -12,6 +12,7 @@ import { FnbModal } from './components/FnbModal';
 import { ProductionConsoleGamesModal } from './components/ProductionConsoleGamesModal';
 import { AuthModal } from './components/AuthModal';
 import { Footer } from './components/Footer';
+import { CafeStatusBar } from './components/CafeStatusBar';
 import { GamingServiceCategory } from './types';
 
 const MainAppLayout: React.FC = () => {
@@ -38,8 +39,9 @@ const MainAppLayout: React.FC = () => {
     {showWalkInModal && <QuickWalkInModal onClose={() => setShowWalkInModal(false)} />}
     {activeInvoiceForModal && <InvoiceModal invoice={activeInvoiceForModal} onClose={() => setActiveInvoiceForModal(null)} />}
     {fnbSessionId && <FnbModal sessionId={fnbSessionId} onClose={() => setFnbSessionId(null)} />}
-    {activeConsoleForGamesModal && <ProductionConsoleGamesModal category={activeConsoleForGamesModal.category} initialStationId={activeConsoleForGamesModal.systemId} onClose={() => setActiveConsoleForGamesModal(null)} onBookStation={(category, systemId, gameTitle) => { setActiveConsoleForGamesModal(null); setShowBookingModal(true); }} />}
+    {activeConsoleForGamesModal && <ProductionConsoleGamesModal category={activeConsoleForGamesModal.category} initialStationId={activeConsoleForGamesModal.systemId} onClose={() => setActiveConsoleForGamesModal(null)} onBookStation={() => { setActiveConsoleForGamesModal(null); setShowBookingModal(true); }} />}
     <AuthModal />
+    <CafeStatusBar />
   </div>;
 };
 
