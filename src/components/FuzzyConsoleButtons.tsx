@@ -119,7 +119,6 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
           const availableCount = getAvailableCount(item.category);
           const isMuted = mutedStates[item.category];
           const isActive = activeIndex === index;
-          const isPC = item.category === 'Gaming PC';
 
           return (
             <button
@@ -129,11 +128,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
               onClick={() => onSelectConsole(item.category)}
               onFocus={() => setActiveIndex(index)}
               onMouseEnter={() => setActiveIndex(index)}
-              className={`category-card group relative shrink-0 snap-center overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] text-left shadow-[0_25px_90px_rgba(0,0,0,0.5)] outline-none transition-all duration-700 ease-out ${
-                isPC
-                  ? 'h-[min(82vh,900px)] min-h-[650px] w-[min(76vw,900px)] min-w-[320px] sm:w-[min(68vw,920px)] lg:w-[min(62vw,960px)]'
-                  : 'h-[min(72vh,760px)] min-h-[560px] w-[min(68vw,720px)] min-w-[300px] sm:w-[min(48vw,650px)] lg:w-[min(34vw,560px)]'
-              } ${style.border} ${style.glow} ${isActive ? 'scale-[1.015] opacity-100' : 'scale-[0.97] opacity-70 hover:scale-[0.99] hover:opacity-90'}`}
+              className={`category-card group relative h-[min(82vh,900px)] min-h-[650px] w-[min(76vw,900px)] min-w-[320px] shrink-0 snap-center overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] text-left shadow-[0_25px_90px_rgba(0,0,0,0.5)] outline-none transition-all duration-700 ease-out sm:w-[min(68vw,920px)] lg:w-[min(62vw,960px)] ${style.border} ${style.glow} ${isActive ? 'scale-[1.015] opacity-100' : 'scale-[0.97] opacity-70 hover:scale-[0.99] hover:opacity-90'}`}
             >
               <div className="absolute inset-0 bg-black">
                 <video
@@ -175,7 +170,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-black/45 text-white backdrop-blur-xl transition group-hover:scale-105">
                     {item.icon}
                   </span>
-                  <h3 className={`${isPC ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-3xl sm:text-4xl'} font-black uppercase leading-none tracking-[-0.04em] text-white`}>
+                  <h3 className="text-3xl font-black uppercase leading-none tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
                     {item.title}
                   </h3>
                 </div>
