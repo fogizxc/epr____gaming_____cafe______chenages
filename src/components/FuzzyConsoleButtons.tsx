@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import '../styles/cinematic-arena.css';
 import { useCafe } from '../context/CafeContext';
 import { GamingServiceCategory } from '../types';
 import { Monitor, Gamepad2, Gauge, Glasses, Volume2, VolumeX, ArrowUpRight, Radio, Sparkles, Zap, Play } from 'lucide-react';
@@ -45,17 +46,8 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
   );
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const getAvailableCount = (category: GamingServiceCategory) =>
-    systems.filter(
-      (system) =>
-        (system.category === category || (category === 'PS5' && system.category === 'PlayStation')) &&
-        system.status === 'AVAILABLE'
-    ).length;
-
-  const toggleMute = (event: React.MouseEvent, category: GamingServiceCategory) => {
-    event.stopPropagation();
-    setMutedStates((current) => ({ ...current, [category]: !current[category] }));
-  };
+  const getAvailableCount = (category: GamingServiceCategory) => systems.filter((system) => (system.category === category || (category === 'PS5' && system.category === 'PlayStation')) && system.status === 'AVAILABLE').length;
+  const toggleMute = (event: React.MouseEvent, category: GamingServiceCategory) => { event.stopPropagation(); setMutedStates((current) => ({ ...current, [category]: !current[category] })); };
 
   useEffect(() => {
     const wall = wallRef.current;
@@ -67,34 +59,20 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
     wall.addEventListener('mouseleave', resume);
     wall.addEventListener('focusin', pause);
     wall.addEventListener('focusout', resume);
-
     const timer = window.setInterval(() => {
       if (paused) return;
       setActiveIndex((current) => {
         const next = (current + 1) % FEATURED_CATEGORIES.length;
         const card = wall.querySelector<HTMLElement>(`[data-arena-index="${next}"]`);
-        if (card) {
-          const targetLeft = card.offsetLeft - Math.max(0, (wall.clientWidth - card.offsetWidth) / 2);
-          wall.scrollTo({ left: targetLeft, behavior: 'smooth' });
-        }
+        if (card) wall.scrollTo({ left: card.offsetLeft - Math.max(0, (wall.clientWidth - card.offsetWidth) / 2), behavior: 'smooth' });
         return next;
       });
     }, 5000);
-
-    return () => {
-      window.clearInterval(timer);
-      wall.removeEventListener('mouseenter', pause);
-      wall.removeEventListener('mouseleave', resume);
-      wall.removeEventListener('focusin', pause);
-      wall.removeEventListener('focusout', resume);
-    };
+    return () => { window.clearInterval(timer); wall.removeEventListener('mouseenter', pause); wall.removeEventListener('mouseleave', resume); wall.removeEventListener('focusin', pause); wall.removeEventListener('focusout', resume); };
   }, []);
 
   useEffect(() => {
-    FEATURED_CATEGORIES.forEach((item) => {
-      const video = videoRefs.current[item.category];
-      if (video) video.playbackRate = 0.88;
-    });
+    FEATURED_CATEGORIES.forEach((item) => { const video = videoRefs.current[item.category]; if (video) video.playbackRate = 0.88; });
   }, []);
 
   return (
@@ -114,24 +92,10 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
           const availableCount = getAvailableCount(item.category);
           const isMuted = mutedStates[item.category];
           const isActive = activeIndex === index;
-
           return (
             <button key={item.category} data-arena-index={index} type="button" onClick={() => onSelectConsole(item.category)} onFocus={() => setActiveIndex(index)} onMouseEnter={() => setActiveIndex(index)} className={`category-card group relative h-[min(82vh,900px)] min-h-[650px] w-[min(76vw,900px)] min-w-[320px] shrink-0 snap-center overflow-hidden rounded-[32px] border border-white/10 bg-[#050505] text-left shadow-[0_25px_90px_rgba(0,0,0,0.6)] outline-none transition-all duration-700 ease-out sm:w-[min(68vw,920px)] lg:w-[min(62vw,960px)] ${style.border} ${style.glow} ${isActive ? 'scale-[1.015] opacity-100' : 'scale-[0.97] opacity-70 hover:scale-[0.99] hover:opacity-90'}`}>
               <div className="absolute inset-0 overflow-hidden bg-black">
-                <video
-                  ref={(node) => { videoRefs.current[item.category] = node; }}
-                  src={item.videoUrl}
-                  poster={item.fallbackPoster}
-                  autoPlay
-                  loop
-                  muted={isMuted}
-                  playsInline
-                  preload="auto"
-                  className={`h-full w-full object-cover transition-[transform,filter,opacity] duration-[1800ms] ease-out ${isActive ? 'scale-[1.09] opacity-95 saturate-[1.12] contrast-[1.08] brightness-[0.78]' : 'scale-100 opacity-60 saturate-[0.75] contrast-[1.04] brightness-[0.62] group-hover:scale-[1.07] group-hover:opacity-85'}`}
-                  style={{ objectPosition: item.objectPosition }}
-                />
-
-                {/* Cinematic color grade + anamorphic lighting */}
+                <video ref={(node) => { videoRefs.current[item.category] = node; }} src={item.videoUrl} poster={item.fallbackPoster} autoPlay loop muted={isMuted} playsInline preload="auto" className={`h-full w-full object-cover transition-[transform,filter,opacity] duration-[1800ms] ease-out ${isActive ? 'scale-[1.09] opacity-95 saturate-[1.12] contrast-[1.08] brightness-[0.78]' : 'scale-100 opacity-60 saturate-[0.75] contrast-[1.04] brightness-[0.62] group-hover:scale-[1.07] group-hover:opacity-85'}`} style={{ objectPosition: item.objectPosition }} />
                 <div className={`absolute inset-0 ${style.wash} mix-blend-screen opacity-25`} />
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_28%,rgba(255,255,255,0.16),transparent_20%),radial-gradient(circle_at_20%_80%,rgba(220,38,38,0.12),transparent_32%)]" />
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.18)_0%,transparent_30%,transparent_55%,rgba(0,0,0,0.94)_100%)]" />
