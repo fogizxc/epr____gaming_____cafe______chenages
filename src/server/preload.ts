@@ -175,4 +175,13 @@ const originalListen = (express.application as any).listen;
   return originalListen.apply(this, args);
 };
 
-export {};
+/**
+ * Compatibility entry point used by server.ts.
+ * The production route wiring is installed at module load time above so it
+ * applies to every Express application created by the server. Calling this
+ * function keeps the explicit preload contract without double-registering
+ * routes or lifecycle workers.
+ */
+export function applyProductionPreload(_app: express.Application): void {
+  // Intentionally empty: Express application methods/listen are patched above.
+}
