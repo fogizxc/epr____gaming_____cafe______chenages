@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCafe } from '../../context/CafeContext';
 import { CustomerHomeDashboard } from '../customer/CustomerHomeDashboard';
+import { MainPageBottomCTA } from '../customer/MainPageBottomCTA';
 import { ExperienceDiscoveryView } from '../customer/ExperienceDiscoveryView';
 import { GameDiscoveryView } from '../customer/GameDiscoveryView';
 import { LiveSessionScreen } from '../customer/LiveSessionScreen';
@@ -27,7 +28,7 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
   onOpenBooking,
   onOpenFnB
 }) => {
-  const { activeNav, requireLogin, setSelectedGameForBooking } = useCafe();
+  const { activeNav, requireLogin, setSelectedGameForBooking, setActiveNav } = useCafe();
   const [overviewGame, setOverviewGame] = useState<HeroGameSlide | null>(null);
 
   // If user navigates to another sidebar tab, reset the overview game view
@@ -69,17 +70,26 @@ export const CustomerPortal: React.FC<CustomerPortalProps> = ({
             }}
           />
         ) : (
-          <CustomerHomeDashboard
-            onOpenBooking={onOpenBooking}
-            onOpenFnB={onOpenFnB}
-            onSelectGameForBooking={handleSelectGameForBooking}
-            onViewGameOverview={(game) => {
-              requireLogin(
-                () => setOverviewGame(game),
-                `Please log in to view ${game.title} details, gameplay reels, and reserve gaming stations.`
-              );
-            }}
-          />
+          <>
+            <CustomerHomeDashboard
+              onOpenBooking={onOpenBooking}
+              onOpenFnB={onOpenFnB}
+              onSelectGameForBooking={handleSelectGameForBooking}
+              onViewGameOverview={(game) => {
+                requireLogin(
+                  () => setOverviewGame(game),
+                  `Please log in to view ${game.title} details, gameplay reels, and reserve gaming stations.`
+                );
+              }}
+            />
+
+            {/* Cinematic end-of-page experience inspired by the supplied reference image. */}
+            <MainPageBottomCTA
+              onOpenBooking={onOpenBooking}
+              onOpenGames={() => setActiveNav('games')}
+              onOpenTournaments={() => setActiveNav('tournaments')}
+            />
+          </>
         )
       )}
 
