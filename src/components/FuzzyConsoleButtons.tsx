@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useCafe } from '../context/CafeContext';
 import { GamingServiceCategory } from '../types';
 import { Monitor, Gamepad2, Gauge, Glasses, Volume2, VolumeX, ArrowUpRight, Radio, Sparkles, Zap } from 'lucide-react';
@@ -37,10 +37,11 @@ const accentStyles: Record<string, { text: string; border: string; glow: string 
 
 export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSelectConsole }) => {
   const { getRateForService, systems } = useCafe();
+  const wallRef = useRef<HTMLDivElement>(null);
   const [mutedStates, setMutedStates] = useState<Record<string, boolean>>(
     Object.fromEntries(FEATURED_CATEGORIES.map((item) => [item.category, true]))
   );
-  const [activeCategory, setActiveCategory] = useState<GamingServiceCategory>('PS5');
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const getAvailableCount = (category: GamingServiceCategory) =>
     systems.filter(
@@ -54,6 +55,39 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
     setMutedStates((current) => ({ ...current, [category]: !current[category] }));
   };
 
+  // Cinematic auto-swipe: advances every 5 seconds and keeps the active card centered.
+  // Pauses while the user is hovering/focusing the arena wall so manual exploration wins.
+  useEffect(() => {
+    const wall = wallRef.current;
+    if (!wall) return;
+
+    let paused = false;
+    const pause = () => { paused = true; };
+    const resume = () => { paused = false; };
+    wall.addEventListener('mouseenter', pause);
+    wall.addEventListener('mouseleave', resume);
+    wall.addEventListener('focusin', pause);
+    wall.addEventListener('focusout', resume);
+
+    const timer = window.setInterval(() => {
+      if (paused) return;
+      setActiveIndex((current) => {
+        const next = (current + 1) % FEATURED_CATEGORIES.length;
+        const card = wall.querySelector<HTMLElement>(`[data-arena-index="${next}"]`);
+        card?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        return next;
+      });
+    }, 5000);
+
+    return () => {
+      window.clearInterval(timer);
+      wall.removeEventListener('mouseenter', pause);
+      wall.removeEventListener('mouseleave', resume);
+      wall.removeEventListener('focusin', pause);
+      wall.removeEventListener('focusout', resume);
+    };
+  }, []);
+
   return (
     <section id="console-fuzzy-buttons-section" className="relative mt-8 w-full sm:mt-12 lg:mt-16">
       <div className="mb-7 flex flex-col gap-5 px-1 sm:mb-9 lg:flex-row lg:items-end lg:justify-between">
@@ -66,30 +100,40 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
             Your game.<br /><span className="text-white/35">Your arena.</span>
           </h2>
           <p className="mt-5 max-w-2xl text-sm leading-7 text-white/45 sm:text-base">
-            Five ways to play. Hover a setup to preview the action, then enter its complete game library.
+            Five ways to play. The arena carousel moves automatically — hover or swipe when you want to take control.
           </p>
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/45">
           <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" /></span>
-          Live previews
+          Auto preview
         </div>
       </div>
 
-      <div className="category-wall flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-5 sm:gap-4 sm:pb-6 xl:grid xl:grid-cols-[1.55fr_1fr_1fr_1fr_1fr] xl:overflow-visible xl:pb-0">
+      <div
+        ref={wallRef}
+        className="category-wall flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-6 sm:gap-5 lg:gap-6"
+        style={{ scrollbarWidth: 'none' }}
+      >
         {FEATURED_CATEGORIES.map((item, index) => {
           const style = accentStyles[item.accent];
           const availableCount = getAvailableCount(item.category);
           const isMuted = mutedStates[item.category];
-          const isActive = activeCategory === item.category;
+          const isActive = activeIndex === index;
+          const isPC = item.category === 'Gaming PC';
 
           return (
             <button
               key={item.category}
+              data-arena-index={index}
               type="button"
               onClick={() => onSelectConsole(item.category)}
-              onMouseEnter={() => setActiveCategory(item.category)}
-              onFocus={() => setActiveCategory(item.category)}
-              className={`category-card group relative min-h-[455px] min-w-[82vw] snap-center overflow-hidden rounded-[30px] border border-white/10 bg-[#080808] text-left shadow-[0_20px_70px_rgba(0,0,0,0.45)] outline-none transition-all duration-500 ease-out sm:min-h-[500px] sm:min-w-[420px] xl:min-h-[590px] xl:min-w-0 xl:snap-none ${style.border} ${style.glow} ${isActive ? 'xl:-translate-y-2 xl:scale-[1.015]' : 'xl:scale-[0.985] xl:opacity-[0.86] hover:scale-[1.01] hover:opacity-100'}`}
+              onFocus={() => setActiveIndex(index)}
+              onMouseEnter={() => setActiveIndex(index)}
+              className={`category-card group relative shrink-0 snap-center overflow-hidden rounded-[32px] border border-white/10 bg-[#080808] text-left shadow-[0_25px_90px_rgba(0,0,0,0.5)] outline-none transition-all duration-700 ease-out ${
+                isPC
+                  ? 'h-[min(82vh,900px)] min-h-[650px] w-[min(76vw,900px)] min-w-[320px] sm:w-[min(68vw,920px)] lg:w-[min(62vw,960px)]'
+                  : 'h-[min(72vh,760px)] min-h-[560px] w-[min(68vw,720px)] min-w-[300px] sm:w-[min(48vw,650px)] lg:w-[min(34vw,560px)]'
+              } ${style.border} ${style.glow} ${isActive ? 'scale-[1.015] opacity-100' : 'scale-[0.97] opacity-70 hover:scale-[0.99] hover:opacity-90'}`}
             >
               <div className="absolute inset-0 bg-black">
                 <video
@@ -100,20 +144,20 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
                   muted={isMuted}
                   playsInline
                   preload="metadata"
-                  className={`h-full w-full object-cover transition duration-[900ms] ${isActive ? 'scale-105 opacity-85' : 'scale-100 opacity-55 group-hover:scale-105 group-hover:opacity-75'}`}
+                  className={`h-full w-full object-cover transition duration-[1200ms] ${isActive ? 'scale-105 opacity-90' : 'scale-100 opacity-55 group-hover:scale-105 group-hover:opacity-80'}`}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-transparent to-transparent" />
               </div>
 
-              <div className="absolute left-5 top-5 right-5 z-10 flex items-center justify-between sm:left-6 sm:right-6 sm:top-6">
+              <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between sm:left-7 sm:right-7 sm:top-7">
                 <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.22em] text-white/75 backdrop-blur-xl">
                   <Radio className="h-3 w-3 text-red-500" /> Live feed
                 </span>
                 <span
                   onClick={(event) => toggleMute(event, item.category)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white/70 backdrop-blur-xl transition hover:bg-white/15 hover:text-white"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white/70 backdrop-blur-xl transition hover:bg-white/15 hover:text-white"
                   role="button"
                   aria-label={isMuted ? 'Unmute video' : 'Mute video'}
                 >
@@ -121,28 +165,30 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
                 </span>
               </div>
 
-              <div className="absolute bottom-0 left-0 right-0 z-10 p-5 sm:p-6 lg:p-7">
-                <div className="mb-3 flex items-center gap-2">
+              <div className="absolute bottom-0 left-0 right-0 z-10 p-6 sm:p-8 lg:p-9">
+                <div className="mb-4 flex flex-wrap items-center gap-2">
                   <span className={`text-[9px] font-black uppercase tracking-[0.3em] ${style.text}`}>{item.eyebrow}</span>
                   {index === 0 && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[7px] font-black uppercase tracking-wider text-white">Most popular</span>}
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-black/45 text-white backdrop-blur-xl transition group-hover:scale-105">
+                <div className="flex items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-black/45 text-white backdrop-blur-xl transition group-hover:scale-105">
                     {item.icon}
                   </span>
-                  <h3 className="text-2xl font-black uppercase leading-none tracking-[-0.03em] text-white sm:text-3xl xl:text-[2.1rem]">{item.title}</h3>
+                  <h3 className={`${isPC ? 'text-4xl sm:text-5xl lg:text-6xl' : 'text-3xl sm:text-4xl'} font-black uppercase leading-none tracking-[-0.04em] text-white`}>
+                    {item.title}
+                  </h3>
                 </div>
 
-                <p className="mt-4 max-w-[390px] text-xs leading-6 text-white/55 sm:text-sm">{item.description}</p>
+                <p className="mt-5 max-w-[580px] text-sm leading-7 text-white/60 sm:text-base">{item.description}</p>
                 <p className="mt-2 text-[9px] font-bold uppercase tracking-wider text-white/30">{item.specs}</p>
 
-                <div className="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4">
+                <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-end sm:justify-between">
                   <div>
                     <span className="block text-[8px] font-bold uppercase tracking-[0.25em] text-white/30">From</span>
-                    <span className="font-mono text-lg font-black text-white">₹{getRateForService(item.category)}<span className="text-[10px] font-normal text-white/35"> / hr</span></span>
+                    <span className="font-mono text-2xl font-black text-white">₹{getRateForService(item.category)}<span className="text-[10px] font-normal text-white/35"> / hr</span></span>
                   </div>
-                  <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[8px] font-black uppercase tracking-[0.16em] text-white/65 transition group-hover:border-white/20 group-hover:bg-white/10">
+                  <span className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-[8px] font-black uppercase tracking-[0.16em] text-white/65 transition group-hover:border-white/20 group-hover:bg-white/10">
                     <span className={`h-1.5 w-1.5 rounded-full ${availableCount > 0 ? 'bg-emerald-400' : 'bg-amber-400'}`} />
                     {availableCount > 0 ? `${availableCount} ready` : 'Check availability'}
                     <ArrowUpRight className={`h-3.5 w-3.5 ${style.text}`} />
@@ -151,7 +197,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
 
                 <div className="mt-4 flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.18em] text-white/25 transition group-hover:text-white/50">
                   <Zap className={`h-3 w-3 ${style.text}`} />
-                  Enter game library
+                  Tap to enter game library
                 </div>
               </div>
             </button>
@@ -160,9 +206,9 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
       </div>
 
       <div className="mt-2 flex items-center justify-between px-1 text-[8px] font-black uppercase tracking-[0.2em] text-white/20 sm:mt-3">
-        <span className="xl:hidden">Swipe to explore</span>
-        <span className="hidden xl:block">Hover to focus</span>
-        <span>Video previews play automatically</span>
+        <span>Auto-swiping every 5 seconds</span>
+        <span>Hover / focus to pause</span>
+        <span>Swipe manually anytime</span>
       </div>
     </section>
   );
