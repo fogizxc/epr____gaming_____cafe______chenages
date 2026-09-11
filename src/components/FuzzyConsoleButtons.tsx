@@ -1,254 +1,154 @@
 import React, { useState } from 'react';
 import { useCafe } from '../context/CafeContext';
 import { GamingServiceCategory } from '../types';
-import {
-  Monitor,
-  Gamepad2,
-  Crown,
-  Volume2,
-  VolumeX,
-  Gauge,
-  CircleDot,
-  Glasses,
-  Tv
-} from 'lucide-react';
+import { Monitor, Gamepad2, Gauge, Glasses, Volume2, VolumeX, ArrowUpRight, Radio, Sparkles } from 'lucide-react';
 
 interface FuzzyConsoleButtonsProps {
   onSelectConsole: (category: GamingServiceCategory) => void;
 }
 
-interface ConsoleButtonItem {
+interface CategoryCard {
   category: GamingServiceCategory;
   title: string;
-  badge: string;
+  eyebrow: string;
+  description: string;
   specs: string;
-  glowClass: string;
-  accentColor: string;
   videoUrl: string;
   fallbackPoster: string;
-  typeGroup: 'CONSOLE' | 'RIG' | 'LOUNGE';
+  accent: string;
+  icon: React.ReactNode;
 }
 
+const FEATURED_CATEGORIES: CategoryCard[] = [
+  {
+    category: 'PS5',
+    title: 'PlayStation 5',
+    eyebrow: 'CONSOLE / 4K 120HZ',
+    description: 'DualSense gaming, cinematic exclusives and competitive couch play.',
+    specs: 'Spider-Man 2 • FC 26 • Tekken 8',
+    videoUrl: '/videos/ps5.mp4',
+    fallbackPoster: '/videos/ps5_thumb.jpg',
+    accent: 'red',
+    icon: <Gamepad2 className="h-5 w-5" />
+  },
+  {
+    category: 'Xbox',
+    title: 'Xbox Series X',
+    eyebrow: 'CONSOLE / GAME PASS',
+    description: 'Fast loading, HDR gaming and a huge multiplayer library.',
+    specs: 'Forza • Halo • EA FC',
+    videoUrl: '/videos/xbox.mp4',
+    fallbackPoster: '/videos/xbox_thumb.jpg',
+    accent: 'emerald',
+    icon: <Gamepad2 className="h-5 w-5" />
+  },
+  {
+    category: 'Gaming PC',
+    title: 'Battle Rigs',
+    eyebrow: 'PC / ESPORTS',
+    description: 'High-refresh competitive rigs built for serious sessions.',
+    specs: 'Valorant • CS2 • GTA V • Warzone',
+    videoUrl: '/videos/pc_rig.mp4',
+    fallbackPoster: 'https://shared.steamstatic.com/store_item_assets/steam/apps/1091500/library_hero.jpg',
+    accent: 'cyan',
+    icon: <Monitor className="h-5 w-5" />
+  },
+  {
+    category: 'VR',
+    title: 'VR Arena',
+    eyebrow: 'IMMERSIVE / 6DOF',
+    description: 'Step inside the game with room-scale virtual reality.',
+    specs: 'Beat Saber • Alyx • Motion Arena',
+    videoUrl: '/videos/vr.mp4',
+    fallbackPoster: 'https://shared.steamstatic.com/store_item_assets/steam/apps/620980/library_hero.jpg',
+    accent: 'violet',
+    icon: <Glasses className="h-5 w-5" />
+  },
+  {
+    category: 'Sim Racing',
+    title: 'Sim Racing',
+    eyebrow: 'DIRECT DRIVE / TRIPLE SCREEN',
+    description: 'Get behind the wheel with force feedback and race-ready hardware.',
+    specs: 'F1 • Assetto Corsa • iRacing',
+    videoUrl: '/videos/sim_racing.mp4',
+    fallbackPoster: '/videos/sim_racing_thumb.jpg',
+    accent: 'orange',
+    icon: <Gauge className="h-5 w-5" />
+  }
+];
+
+const accentStyles: Record<string, { text: string; border: string; glow: string }> = {
+  red: { text: 'text-red-400', border: 'group-hover:border-red-500/50', glow: 'group-hover:shadow-red-950/40' },
+  emerald: { text: 'text-emerald-400', border: 'group-hover:border-emerald-500/50', glow: 'group-hover:shadow-emerald-950/30' },
+  cyan: { text: 'text-cyan-400', border: 'group-hover:border-cyan-500/50', glow: 'group-hover:shadow-cyan-950/30' },
+  violet: { text: 'text-violet-400', border: 'group-hover:border-violet-500/50', glow: 'group-hover:shadow-violet-950/30' },
+  orange: { text: 'text-orange-400', border: 'group-hover:border-orange-500/50', glow: 'group-hover:shadow-orange-950/30' }
+};
+
 export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSelectConsole }) => {
-  const { getRateForService, systems, openConsoleGames } = useCafe();
-  const [activeGroup, setActiveGroup] = useState<'ALL' | 'CONSOLE' | 'RIG' | 'LOUNGE'>('ALL');
-  const [mutedStates, setMutedStates] = useState<Record<string, boolean>>({
-    PS5: true,
-    Xbox: true,
-    PS4: true,
-    'Gaming PC': true,
-    'VIP Room': true,
-    VR: true,
-    'Pool Table': true,
-    'Sim Racing': true
-  });
+  const { getRateForService, systems } = useCafe();
+  const [mutedStates, setMutedStates] = useState<Record<string, boolean>>(
+    Object.fromEntries(FEATURED_CATEGORIES.map((item) => [item.category, true]))
+  );
+  const [activeCategory, setActiveCategory] = useState<GamingServiceCategory | null>(null);
 
-  // Calculate live availability count
-  const getAvailableCount = (cat: GamingServiceCategory) => {
-    return systems.filter(s => (s.category === cat || (cat === 'PS5' && s.category === 'PlayStation')) && s.status === 'AVAILABLE').length;
+  const getAvailableCount = (category: GamingServiceCategory) =>
+    systems.filter(
+      (system) =>
+        (system.category === category || (category === 'PS5' && system.category === 'PlayStation')) &&
+        system.status === 'AVAILABLE'
+    ).length;
+
+  const toggleMute = (event: React.MouseEvent, category: GamingServiceCategory) => {
+    event.stopPropagation();
+    setMutedStates((current) => ({ ...current, [category]: !current[category] }));
   };
 
-  const consoles: ConsoleButtonItem[] = [
-    {
-      category: 'PS5',
-      title: 'PlayStation 5 Console',
-      badge: 'Sony 4K 120Hz',
-      specs: 'DualSense Edge, 65" Bravia OLED, Spider-Man 2 & Tekken 8',
-      glowClass: 'fuzzy-glow',
-      accentColor: '#ef4444',
-      videoUrl: '/videos/ps5.mp4',
-      fallbackPoster: '/videos/ps5_thumb.jpg',
-      typeGroup: 'CONSOLE'
-    },
-    {
-      category: 'Xbox',
-      title: 'Xbox Series X Console',
-      badge: 'Game Pass Ultimate',
-      specs: 'Elite Series 2, 55" 4K HDR, Forza Motorsport & Halo Infinite',
-      glowClass: 'fuzzy-glow-green',
-      accentColor: '#10b981',
-      videoUrl: '/videos/xbox.mp4',
-      fallbackPoster: '/videos/xbox_thumb.jpg',
-      typeGroup: 'CONSOLE'
-    },
-    {
-      category: 'PS4',
-      title: 'PlayStation 4 Pro / Slim',
-      badge: '1080p HDR Classics',
-      specs: 'DualShock 4, 50" HDR TV, God of War, FIFA 23 & Bloodborne',
-      glowClass: 'fuzzy-glow-indigo',
-      accentColor: '#6366f1',
-      videoUrl: '/videos/ps4.mp4',
-      fallbackPoster: 'https://shared.steamstatic.com/store_item_assets/steam/apps/1593500/library_hero.jpg',
-      typeGroup: 'CONSOLE'
-    },
-    {
-      category: 'Gaming PC',
-      title: 'Gaming PC Battle Rigs',
-      badge: 'RTX 4090 24GB',
-      specs: 'Core i9 14900K, 240Hz OLED, 1Gbps LAN, Valorant & CS2',
-      glowClass: 'fuzzy-glow-blue',
-      accentColor: '#3b82f6',
-      videoUrl: '/videos/pc_rig.mp4',
-      fallbackPoster: 'https://shared.steamstatic.com/store_item_assets/steam/apps/1091500/library_hero.jpg',
-      typeGroup: 'RIG'
-    },
-    {
-      category: 'Sim Racing',
-      title: 'Direct Drive Sim Racing',
-      badge: 'Fanatec DD 25Nm',
-      specs: 'Heusinkveld Pedals, Triple Curved Screens, Assetto Corsa & F1 24',
-      glowClass: 'fuzzy-glow-orange',
-      accentColor: '#f97316',
-      videoUrl: '/videos/sim_racing.mp4',
-      fallbackPoster: '/videos/sim_racing_thumb.jpg',
-      typeGroup: 'RIG'
-    },
-    {
-      category: 'VR',
-      title: 'VR Motion Holodeck',
-      badge: 'Quest 3 & Vive Pro 2',
-      specs: '6DoF Room-scale 4x4m Padded Arena, Half-Life Alyx & Beat Saber',
-      glowClass: 'fuzzy-glow-cyan',
-      accentColor: '#06b6d4',
-      videoUrl: '/videos/vr.mp4',
-      fallbackPoster: 'https://shared.steamstatic.com/store_item_assets/steam/apps/620980/library_hero.jpg',
-      typeGroup: 'RIG'
-    },
-    {
-      category: 'VIP Room',
-      title: 'VIP Gaming Lounge Suite',
-      badge: 'Ultra Private Suite',
-      specs: '85" Neo QLED 8K, Dual Rigs + PS5, Dolby Atmos 7.1.4, Mini Bar',
-      glowClass: 'fuzzy-glow-purple',
-      accentColor: '#a855f7',
-      videoUrl: '/videos/vip_room.mp4',
-      fallbackPoster: 'https://i.ytimg.com/vi/QdBZY2fkU-0/maxresdefault.jpg',
-      typeGroup: 'LOUNGE'
-    },
-    {
-      category: 'Pool Table',
-      title: 'Tournament Pool Table',
-      badge: '9ft Championship Slate',
-      specs: 'Aramith Pro TV Balls, Predator Carbon Cues, Shadowless LED',
-      glowClass: 'fuzzy-glow-amber',
-      accentColor: '#eab308',
-      videoUrl: '/videos/pool_table.mp4',
-      fallbackPoster: '/videos/pool_thumb.jpg',
-      typeGroup: 'LOUNGE'
-    }
-  ];
-
-  const toggleMute = (e: React.MouseEvent, cat: string) => {
-    e.stopPropagation();
-    setMutedStates(prev => ({ ...prev, [cat]: !prev[cat] }));
-  };
-
-  const filteredConsoles = consoles.filter(c => activeGroup === 'ALL' || c.typeGroup === activeGroup);
-
-  const getCategoryIcon = (category: GamingServiceCategory) => {
-    switch (category) {
-      case 'PS5':
-      case 'PlayStation':
-        return <Gamepad2 className="w-4 h-4 text-red-500" />;
-      case 'Xbox':
-        return <Gamepad2 className="w-4 h-4 text-emerald-400" />;
-      case 'PS4':
-        return <Tv className="w-4 h-4 text-indigo-400" />;
-      case 'Gaming PC':
-        return <Monitor className="w-4 h-4 text-cyan-400" />;
-      case 'Sim Racing':
-        return <Gauge className="w-4 h-4 text-orange-400" />;
-      case 'VR':
-        return <Glasses className="w-4 h-4 text-teal-400" />;
-      case 'VIP Room':
-        return <Crown className="w-4 h-4 text-amber-400" />;
-      case 'Pool Table':
-        return <CircleDot className="w-4 h-4 text-yellow-400" />;
-      default:
-        return <Monitor className="w-4 h-4 text-white/80" />;
-    }
+  const selectCategory = (category: GamingServiceCategory) => {
+    setActiveCategory(category);
+    onSelectConsole(category);
   };
 
   return (
-    <section id="console-fuzzy-buttons-section" className="w-full flex flex-col gap-4 mt-4">
-      {/* Section Header with Editorial Kicker and Filter Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-red-600">
-            Hardware Stations & Rig Access
-          </span>
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-white uppercase tracking-tight">
-              Console & Rig Access
-            </h2>
-            <span className="text-[9px] uppercase tracking-widest bg-white/5 text-white/70 border border-white/10 px-2 py-0.5 rounded-full font-bold">
-              8 Rigs Live
-            </span>
+    <section id="console-fuzzy-buttons-section" className="mt-14 w-full px-1 sm:mt-20">
+      <div className="mb-8 flex flex-col gap-5 lg:mb-10 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl">
+          <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.42em] text-red-500">
+            <Sparkles className="h-3.5 w-3.5" />
+            Choose your arena
           </div>
+          <h2 className="text-3xl font-black uppercase tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
+            Pick your <span className="text-red-500">battlefield.</span>
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-7 text-white/45 sm:text-base">
+            Five ways to play. Every station has its own live visual feed — choose a setup and jump straight into its game library.
+          </p>
         </div>
-
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          <button
-            onClick={() => setActiveGroup('ALL')}
-            className={`px-3 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold transition whitespace-nowrap cursor-pointer border ${
-              activeGroup === 'ALL'
-                ? 'bg-white text-black border-white'
-                : 'bg-white/5 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            All Rigs (8)
-          </button>
-          <button
-            onClick={() => setActiveGroup('CONSOLE')}
-            className={`px-3 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold transition whitespace-nowrap cursor-pointer border ${
-              activeGroup === 'CONSOLE'
-                ? 'bg-white text-black border-white'
-                : 'bg-white/5 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            Consoles (3)
-          </button>
-          <button
-            onClick={() => setActiveGroup('RIG')}
-            className={`px-3 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold transition whitespace-nowrap cursor-pointer border ${
-              activeGroup === 'RIG'
-                ? 'bg-white text-black border-white'
-                : 'bg-white/5 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            Esports & Sim (3)
-          </button>
-          <button
-            onClick={() => setActiveGroup('LOUNGE')}
-            className={`px-3 py-1 rounded-lg text-[10px] uppercase tracking-wider font-bold transition whitespace-nowrap cursor-pointer border ${
-              activeGroup === 'LOUNGE'
-                ? 'bg-white text-black border-white'
-                : 'bg-white/5 text-white/60 border-white/10 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            VIP & Billiards (2)
-          </button>
+        <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+          Live station feeds
         </div>
       </div>
 
-      {/* Fuzzy Style Buttons with Embedded Live Video (Responsive 4-column Grid) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {filteredConsoles.map((item) => {
-          const rate = getRateForService(item.category);
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-12 xl:gap-6">
+        {FEATURED_CATEGORIES.map((item, index) => {
+          const style = accentStyles[item.accent];
           const availableCount = getAvailableCount(item.category);
           const isMuted = mutedStates[item.category];
+          const featured = index === 0 || index === 2;
 
           return (
-            <div
+            <button
               key={item.category}
-              id={`fuzzy-btn-${item.category.toLowerCase().replace(/\s+/g, '-')}`}
-              onClick={() => openConsoleGames(item.category)}
-              className="group relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 transform hover:-translate-y-1 border border-white/10 hover:border-white/25 bg-white/5 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.02)] min-h-[250px] flex flex-col justify-between p-5"
+              type="button"
+              onClick={() => selectCategory(item.category)}
+              onMouseEnter={() => setActiveCategory(item.category)}
+              onMouseLeave={() => setActiveCategory(null)}
+              className={`group relative min-h-[390px] overflow-hidden rounded-[28px] border border-white/10 bg-[#090909] text-left shadow-2xl transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${style.border} ${style.glow} ${
+                featured ? 'xl:col-span-4' : 'xl:col-span-2'
+              }`}
             >
-              {/* LIVE VIDEO PLAYING INSIDE THE BUTTON */}
-              <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+              <div className="absolute inset-0 bg-black">
                 <video
                   src={item.videoUrl}
                   poster={item.fallbackPoster}
@@ -256,77 +156,75 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
                   loop
                   muted={isMuted}
                   playsInline
-                  className="w-full h-full object-cover group-hover:scale-110 transition duration-700 opacity-60 group-hover:opacity-85"
+                  preload="metadata"
+                  className="h-full w-full object-cover opacity-55 transition duration-700 group-hover:scale-105 group-hover:opacity-80"
                 />
-                {/* Frosted / Editorial gradient layer */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#030303] via-[#030303]/45 to-black/10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent" />
               </div>
 
-              {/* Top Header of Button: Category Badge & Live Pulse Dot */}
-              <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/60 border border-white/15 backdrop-blur-md">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-white">
-                      Live Feed
-                    </span>
-                  </div>
-                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md bg-white/10 text-white/80 backdrop-blur-md">
-                    {item.badge}
+              <div className="relative z-10 flex h-full min-h-[390px] flex-col justify-between p-6 sm:p-7">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/55 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/80 backdrop-blur-md">
+                    <Radio className="h-3 w-3 text-red-500" />
+                    Live feed
+                  </span>
+                  <span
+                    onClick={(event) => toggleMute(event, item.category)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/55 text-white/70 backdrop-blur-md transition hover:bg-white/15 hover:text-white"
+                    role="button"
+                    aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+                  >
+                    {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className={`h-4 w-4 ${style.text}`} />}
                   </span>
                 </div>
 
-                {/* Sound Toggle on Video */}
-                <button
-                  onClick={(e) => toggleMute(e, item.category)}
-                  className="w-6 h-6 rounded-full bg-black/60 hover:bg-black border border-white/20 flex items-center justify-center text-white/70 hover:text-white transition backdrop-blur-md"
-                  title={isMuted ? 'Unmute Live Audio' : 'Mute'}
-                >
-                  {isMuted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3 text-red-500" />}
-                </button>
-              </div>
-
-              {/* Center / Bottom Info of Button */}
-              <div className="relative z-10 mt-auto pt-6">
-                <div className="flex items-center gap-2 mb-1">
-                  {getCategoryIcon(item.category)}
-                  <h3 className="text-sm font-black text-white uppercase tracking-tight">
-                    {item.title}
-                  </h3>
-                </div>
-
-                <p className="text-[11px] text-white/50 line-clamp-2 font-light">
-                  {item.specs}
-                </p>
-
-                {/* Pricing & Availability Bar */}
-                <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                  <div>
-                    <span className="text-[9px] uppercase tracking-widest text-white/40 block">
-                      Hourly Rate
-                    </span>
-                    <span className="text-base font-black text-white font-mono">
-                      ₹{rate}
-                      <span className="text-xs font-normal text-white/40">/hr</span>
-                    </span>
+                <div className="max-w-[340px]">
+                  <div className={`mb-3 text-[9px] font-black uppercase tracking-[0.3em] ${style.text}`}>
+                    {item.eyebrow}
                   </div>
+                  <div className="mb-3 flex items-center gap-3 text-white">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-black/50 backdrop-blur-md">
+                      {item.icon}
+                    </span>
+                    <h3 className={`${featured ? 'text-2xl sm:text-3xl' : 'text-xl'} font-black uppercase tracking-tight`}>
+                      {item.title}
+                    </h3>
+                  </div>
+                  <p className="text-xs leading-6 text-white/60 sm:text-sm">{item.description}</p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/35">{item.specs}</p>
 
-                  <div className="text-right">
-                    <span
-                      className={`text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full backdrop-blur-md inline-block border ${
-                        availableCount > 0
-                          ? 'bg-white/10 text-white border-white/20'
-                          : 'bg-red-600/20 text-red-400 border-red-600/30'
-                      }`}
-                    >
-                      {availableCount > 0 ? `${availableCount} Available` : 'Occupied'}
+                  <div className="mt-6 flex items-end justify-between border-t border-white/10 pt-4">
+                    <div>
+                      <span className="block text-[8px] font-bold uppercase tracking-[0.25em] text-white/35">From</span>
+                      <span className="font-mono text-lg font-black text-white">
+                        ₹{getRateForService(item.category)}<span className="text-xs font-normal text-white/35">/hr</span>
+                      </span>
+                    </div>
+                    <span className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-white/70">
+                      {availableCount > 0 ? `${availableCount} ready` : 'Check availability'}
+                      <ArrowUpRight className={`h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${style.text}`} />
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
+
+              {activeCategory === item.category && (
+                <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-inset ring-white/20" />
+              )}
+            </button>
           );
         })}
+      </div>
+
+      <div className="mt-6 flex flex-col items-start justify-between gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/30">
+          Select a station to browse its complete game catalog
+        </p>
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/45">
+          <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+          Video previews play automatically
+        </div>
       </div>
     </section>
   );
