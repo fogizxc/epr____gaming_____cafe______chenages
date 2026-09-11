@@ -18,7 +18,34 @@ const PUBLIC_PREFIXES=["/api/games/"];
 const CUSTOMER_PREFIXES=["/api/me","/api/stations","/api/bookings","/api/sessions","/api/wallet","/api/membership","/api/rewards","/api/referrals","/api/fnb","/api/support","/api/payments","/api/tournaments"];
 const STAFF_PREFIXES=["/api/employee/"];
 const ADMIN_PREFIXES=["/api/admin/"];
+
+// Lightweight abuse protection for authentication and refresh endpoints. This
+// is deliberately fail-open on unexpected bookkeeping errors and is not a
+// replacement for an edge/WAF rate limiter in a multi-instance deployment.
+type RateBucket = { windowStartedAt: number; count: number };
+const authRateBuckets = new Map<string, RateBucket>();
+const AUTH_RATE_WINDOW_MS = 60_000;
+const AUTH_RATE_LIMIT = 20;
+const MAX_RATE_BUCKETS = 10_000;
+
 function startsWithAny(path:string,prefixes:string[]){return prefixes.some(prefix=>path===prefix||path.startsWith(prefix))}
+function clientKey(req: Request) {
+  const forwarded = req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  return forwarded || req.socket.remoteAddress || "unknown";
+}
+function isRateLimited(req: Request) {
+  if (!startsWithAny(req.path,["/api/auth/login","/api/auth/register","/api/auth/refresh"])) return false;
+  const now = Date.now();
+  const key = `${req.method}:${req.path}:${clientKey(req)}`;
+  const current = authRateBuckets.get(key);
+  if (!current || now-current.windowStartedAt >= AUTH_RATE_WINDOW_MS) {
+    if (authRateBuckets.size >= MAX_RATE_BUCKETS) authRateBuckets.clear();
+    authRateBuckets.set(key,{windowStartedAt:now,count:1});
+    return false;
+  }
+  current.count += 1;
+  return current.count > AUTH_RATE_LIMIT;
+}
 
 function applyApiSecurityHeaders(req:Request,res:Response){
   res.setHeader("X-Content-Type-Options","nosniff");
@@ -26,6 +53,8 @@ function applyApiSecurityHeaders(req:Request,res:Response){
   res.setHeader("Referrer-Policy","no-referrer");
   res.setHeader("Permissions-Policy","camera=(), microphone=(), geolocation=()");
   res.setHeader("Cache-Control","no-store");
+  res.setHeader("X-DNS-Prefetch-Control","off");
+  res.setHeader("Cross-Origin-Resource-Policy","same-origin");
   const configuredOrigin=process.env.APP_URL?.trim().replace(/\/$/,"");
   const origin=req.header("origin");
   if(configuredOrigin&&origin===configuredOrigin){
@@ -40,6 +69,10 @@ function applyApiSecurityHeaders(req:Request,res:Response){
 export function apiSecurityPolicy(req:Request,res:Response,next:NextFunction){
   if(req.path.startsWith("/api/")) applyApiSecurityHeaders(req,res);
   if(req.method==="OPTIONS"&&req.path.startsWith("/api/")) return res.sendStatus(204);
+  if(isRateLimited(req)) {
+    res.setHeader("Retry-After","60");
+    return res.status(429).json({success:false,error:"Too many authentication attempts. Please try again later."});
+  }
   if(PUBLIC_EXACT.has(req.path)||startsWithAny(req.path,PUBLIC_PREFIXES))return next();
   if(!req.path.startsWith("/api/"))return next();
   if(startsWithAny(req.path,ADMIN_PREFIXES))return requireRole("ADMIN","SUPER_ADMIN")(req as any,res,next);
