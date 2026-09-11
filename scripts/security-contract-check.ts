@@ -46,6 +46,10 @@ for (const marker of ["isLoginBlocked", "recordLoginFailure", "clearLoginFailure
 for (const marker of ["MAX_FAILURES", "LOCK_MS", "auth_login_guards", "tokenHash", "password"]) {
   if (!loginGuard.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_INCOMPLETE:${marker}`);
 }
+for (const marker of ["REFRESH_COOKIE", "httpOnly: true", "CLIENT_REFRESH_MARKER", "readCookie(req, REFRESH_COOKIE)", "setRefreshCookie(res, refreshToken)", "clearRefreshCookie(res)"]) {
+  if (!authRoutes.includes(marker)) throw new Error(`SECURITY_REFRESH_COOKIE_CONTRACT_MISSING:${marker}`);
+}
+if (!authRoutes.includes('refreshToken: CLIENT_REFRESH_MARKER')) throw new Error("SECURITY_REFRESH_TOKEN_MUST_NOT_BE_RETURNED_TO_BROWSER");
 if (cafeContext.includes("password: account.password") || cafeContext.includes("password: account.passwordHash")) {
   throw new Error("SECURITY_CLIENT_ACCOUNT_SYNC_MUST_NOT_EXPORT_PASSWORDS");
 }
@@ -53,4 +57,4 @@ if (!cafeContext.includes("Account creation is handled by production authenticat
   throw new Error("SECURITY_LEGACY_CLIENT_ACCOUNT_CREATION_NOT_DISABLED");
 }
 
-console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, login abuse guard, and credential-sync protection enabled).`);
+console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, login abuse guard, HttpOnly refresh cookies, and credential-sync protection enabled).`);
