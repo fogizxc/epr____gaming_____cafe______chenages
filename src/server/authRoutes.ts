@@ -12,7 +12,7 @@ import {
   rotateRefreshToken,
   verifyPassword,
 } from "./auth.js";
-import { clearLoginFailures, ensureLoginGuardIndexes, isLoginBlocked, recordLoginFailure } from "./loginGuard.js";
+import { clearLoginFailures, isLoginBlocked, recordLoginFailure } from "./loginGuard.js";
 
 const VALID_ROLES: AppRole[] = ["CUSTOMER", "EMPLOYEE", "ADMIN", "SUPER_ADMIN"];
 
@@ -36,7 +36,6 @@ export function registerAuthRoutes(app: Express) {
       if (!validatePassword(password)) return res.status(400).json({ success: false, error: "Password must be 8-128 characters" });
       if (phone !== undefined && (typeof phone !== "string" || phone.trim().length > 30)) return res.status(400).json({ success: false, error: "Invalid phone number" });
       const db = await getMongoDb();
-      await ensureLoginGuardIndexes(db);
       const normalizedEmail = email.trim().toLowerCase();
       const existing = await db.collection("users").findOne({ email: normalizedEmail });
       if (existing) return res.status(409).json({ success: false, error: "An account with this email already exists" });
@@ -67,7 +66,6 @@ export function registerAuthRoutes(app: Express) {
       const identifier = String(email || idOrUsername || "").trim();
       if (!identifier) return res.status(400).json({ success: false, error: "Invalid credentials" });
       const db = await getMongoDb();
-      await ensureLoginGuardIndexes(db);
       const clientIp = req.ip || req.socket.remoteAddress || "unknown";
       if (await isLoginBlocked(db, identifier, clientIp)) {
         return res.status(429).json({ success: false, error: "Too many failed login attempts. Try again later." });
