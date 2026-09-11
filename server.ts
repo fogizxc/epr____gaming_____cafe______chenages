@@ -6,6 +6,7 @@ import nodemailer from "nodemailer";
 import { GoogleGenAI } from "@google/genai";
 import { apiSecurityPolicy } from "./src/server/security.js";
 import { applyProductionPreload } from "./src/server/preload.js";
+import { closeMongoDb } from "./src/server/mongodb.js";
 
 dotenv.config();
 
@@ -54,7 +55,9 @@ async function sendViaBrevoApi(payload: BrevoEmailPayload, config: ReturnType<ty
 
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
+  app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
   app.use(apiSecurityPolicy);
   applyProductionPreload(app);
 
@@ -95,7 +98,20 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== "production") { const vite = await createViteServer({ server: { middlewareMode: true }, appType: "spa" }); app.use(vite.middlewares); }
-  else { const distPath = path.join(process.cwd(), "dist"); app.use(express.static(distPath)); app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html"))); }
-  app.listen(PORT, "0.0.0.0", () => console.log(`Bytes & Brew Server listening on port ${PORT}`));
+  else { const distPath = path.join(process.cwd(), "dist"); app.use(express.static(distPath, { maxAge: "1d", etag: true, index: "index.html" })); app.get("*", (_req, res) => res.sendFile(path.join(distPath, "index.html"))); }
+
+  const server = app.listen(PORT, "0.0.0.0", () => console.log(`Bytes & Brew Server listening on port ${PORT}`));
+  const shutdown = async (signal: string) => {
+    console.log(`[server] ${signal} received; starting graceful shutdown`);
+    server.close(async () => {
+      try { await closeMongoDb(); } catch (error) { console.error("[server] MongoDB shutdown error:", error); }
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  process.once("SIGTERM", () => void shutdown("SIGTERM"));
+  process.once("SIGINT", () => void shutdown("SIGINT"));
+  process.on("unhandledRejection", (reason) => console.error("[server] unhandledRejection", reason));
+  process.on("uncaughtException", (error) => { console.error("[server] uncaughtException", error); void shutdown("uncaughtException"); });
 }
-startServer();
+startServer().catch((error) => { console.error("[server] startup failed", error); process.exit(1); });
