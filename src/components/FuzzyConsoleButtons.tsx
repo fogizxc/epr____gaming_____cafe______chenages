@@ -49,44 +49,44 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
   const getAvailableCount = (category: GamingServiceCategory) => systems.filter((system) => (system.category === category || (category === 'PS5' && system.category === 'PlayStation')) && system.status === 'AVAILABLE').length;
   const toggleMute = (event: React.MouseEvent, category: GamingServiceCategory) => { event.stopPropagation(); setMutedStates((current) => ({ ...current, [category]: !current[category] })); };
 
+  // Keep the arena carousel automatic. Every arena gets a 7-second cinematic window.
   useEffect(() => {
     const wall = wallRef.current;
     if (!wall) return;
-    let paused = false;
-    const pause = () => { paused = true; };
-    const resume = () => { paused = false; };
-    wall.addEventListener('mouseenter', pause);
-    wall.addEventListener('mouseleave', resume);
-    wall.addEventListener('focusin', pause);
-    wall.addEventListener('focusout', resume);
+
     const timer = window.setInterval(() => {
-      if (paused) return;
       setActiveIndex((current) => {
         const next = (current + 1) % FEATURED_CATEGORIES.length;
         const card = wall.querySelector<HTMLElement>(`[data-arena-index="${next}"]`);
-        if (card) wall.scrollTo({ left: card.offsetLeft - Math.max(0, (wall.clientWidth - card.offsetWidth) / 2), behavior: 'smooth' });
+        if (card) {
+          wall.scrollTo({
+            left: card.offsetLeft - Math.max(0, (wall.clientWidth - card.offsetWidth) / 2),
+            behavior: 'smooth'
+          });
+        }
         return next;
       });
-    }, 5000);
-    return () => { window.clearInterval(timer); wall.removeEventListener('mouseenter', pause); wall.removeEventListener('mouseleave', resume); wall.removeEventListener('focusin', pause); wall.removeEventListener('focusout', resume); };
+    }, 7000);
+
+    return () => window.clearInterval(timer);
   }, []);
 
+  // Start the active preview from its beginning and pause the other previews.
   useEffect(() => {
-    FEATURED_CATEGORIES.forEach((item) => {
+    FEATURED_CATEGORIES.forEach((item, index) => {
       const video = videoRefs.current[item.category];
-      if (video) {
-        video.muted = true;
-        video.defaultMuted = true;
-        video.playbackRate = 0.88;
+      if (!video) return;
+
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playbackRate = 1;
+
+      if (index === activeIndex) {
+        try { video.currentTime = 0; } catch { /* media may not be seekable yet */ }
         void video.play().catch(() => undefined);
+      } else {
+        video.pause();
       }
-    });
-  }, []);
-
-  useEffect(() => {
-    FEATURED_CATEGORIES.forEach((item) => {
-      const video = videoRefs.current[item.category];
-      if (video) void video.play().catch(() => undefined);
     });
   }, [activeIndex]);
 
@@ -101,7 +101,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
         <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/45"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" /></span>Auto preview</div>
       </div>
 
-      <div ref={wallRef} className="category-wall flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-6 sm:gap-5 lg:gap-6" style={{ scrollbarWidth: 'none', touchAction: 'pan-x' }}>
+      <div ref={wallRef} className="category-wall flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-6 sm:gap-5 lg:gap-6" style={{ scrollbarWidth: 'none', touchAction: 'pan-x pan-y' }}>
         {FEATURED_CATEGORIES.map((item, index) => {
           const style = accentStyles[item.accent];
           const availableCount = getAvailableCount(item.category);
@@ -125,10 +125,6 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
               <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between sm:left-7 sm:right-7 sm:top-7">
                 <span className="flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.22em] text-white/75 backdrop-blur-xl"><Radio className="h-3 w-3 text-red-500" />Fresh cinematic</span>
                 <span onClick={(event) => toggleMute(event, item.category)} className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white/70 backdrop-blur-xl transition hover:bg-white/15 hover:text-white" role="button" aria-label={isMuted ? 'Unmute video' : 'Mute video'}>{isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className={`h-4 w-4 ${style.text}`} />}</span>
-              </div>
-
-              <div className="absolute left-6 right-6 top-1/2 z-10 flex -translate-y-1/2 justify-end pointer-events-none sm:left-8 sm:right-8">
-                <span className="rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-white/45 backdrop-blur-xl">Preview {String(index + 1).padStart(2, '0')} / 05</span>
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 z-10 p-6 sm:p-8 lg:p-9">
