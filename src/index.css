@@ -8,169 +8,99 @@
     overflow-x: hidden;
   }
 }
-
-/* Fuzzy glow & custom effects */
 .fuzzy-glow { box-shadow: 0 0 20px -3px rgba(220, 38, 38, 0.35), 0 0 15px rgba(255, 255, 255, 0.02); backdrop-filter: blur(14px); }
 .fuzzy-glow-blue { box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.35), 0 0 15px rgba(255, 255, 255, 0.02); backdrop-filter: blur(14px); }
 .fuzzy-glow-green { box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.35), 0 0 15px rgba(255, 255, 255, 0.02); backdrop-filter: blur(14px); }
 .fuzzy-glow-purple { box-shadow: 0 0 20px -3px rgba(168, 85, 247, 0.35), 0 0 15px rgba(255, 255, 255, 0.02); backdrop-filter: blur(14px); }
-
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: #050505; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
-
 @keyframes autoSlideTrack { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .sliding-track-content { display: flex; width: max-content; animation: autoSlideTrack 30s linear infinite; }
 .sliding-track-container:hover .sliding-track-content { animation-play-state: paused; }
-
-@media print {
-  body * { visibility: hidden; }
-  #printable-invoice, #printable-invoice * { visibility: visible; }
-  #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white !important; color: black !important; }
-}
-
-#footer-requested-nav-links,
-#footer-social-logos-row { justify-content: center !important; width: 100%; }
+@media print { body * { visibility: hidden; } #printable-invoice, #printable-invoice * { visibility: visible; } #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white !important; color: black !important; } }
+#footer-requested-nav-links, #footer-social-logos-row { justify-content: center !important; width: 100%; }
 #footer-requested-nav-links { column-gap: clamp(1.25rem, 3vw, 2.75rem); row-gap: 0.75rem; }
 #footer-social-logos-row { gap: 1.25rem; }
-
-/* Spacious cinematic customer experience */
 main:has(#customer-home-dashboard) { max-width: 1600px !important; padding-left: clamp(1rem, 3vw, 4rem) !important; padding-right: clamp(1rem, 3vw, 4rem) !important; }
 #customer-home-dashboard { gap: clamp(3.5rem, 6vw, 7rem) !important; padding-bottom: clamp(4rem, 8vw, 8rem) !important; }
 #customer-home-dashboard > section { scroll-margin-top: 7rem; }
-#customer-home-dashboard > section:first-child { margin-bottom: clamp(0.5rem, 1vw, 1rem); }
+#customer-home-dashboard > section:first-child { margin-bottom: clamp(.5rem, 1vw, 1rem); }
 #hero-slider-main { min-height: clamp(560px, 68vh, 820px) !important; border-radius: clamp(1.25rem, 2vw, 2rem) !important; }
 #customer-home-dashboard > section:nth-child(2) { padding: clamp(1.5rem, 3vw, 2.5rem) !important; border-radius: 1.5rem !important; }
-
-/* Quick actions */
 #customer-home-dashboard > section:has(#btn-quick-book) { gap: clamp(1rem, 2vw, 1.5rem) !important; }
 #customer-home-dashboard > section:has(#btn-quick-book) button { min-height: 150px; padding: clamp(1.25rem, 2vw, 1.75rem) !important; border-radius: 1.25rem !important; }
-
-/* Game-detail presentation */
 #game-detail-view { max-width: 1500px; margin-inline: auto; }
-
-/* ----------------------------------------------------------------
-   MOBILE LIVE SESSION: never allow labels/actions to overflow.
-   The desktop composition stays unchanged; on phones it becomes a
-   compact stacked control panel with flexible text wrapping.
-   ---------------------------------------------------------------- */
 @media (max-width: 767px) {
   main:has(#customer-home-dashboard) { padding-left: 1rem !important; padding-right: 1rem !important; }
   #customer-home-dashboard { gap: 3rem !important; }
   #hero-slider-main { min-height: 560px !important; }
-
   #customer-home-dashboard > section:has(#btn-quick-book) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #customer-home-dashboard > section:has(#btn-quick-book) button { min-height: 135px; }
-
-  /* The active-session banner is intentionally full-width and stacked. */
-  #customer-home-dashboard > section:has(button.bg-red-600) {
-    min-width: 0 !important;
-    width: 100% !important;
-    padding: 1rem !important;
-    gap: 1rem !important;
-    overflow: hidden !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child {
-    min-width: 0 !important;
-    width: 100% !important;
-    align-items: flex-start !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child > div:last-child {
-    min-width: 0 !important;
-    flex: 1 1 auto !important;
-    max-width: 100% !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) span,
-  #customer-home-dashboard > section:has(button.bg-red-600) h3,
-  #customer-home-dashboard > section:has(button.bg-red-600) p {
-    max-width: 100% !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) h3 {
-    font-size: 1rem !important;
-    line-height: 1.35 !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child {
-    width: 100% !important;
-    min-width: 0 !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 0.75rem !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:first-child {
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    text-align: left !important;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 0.75rem;
-    padding: 0.6rem 0.8rem;
-    background: rgba(255,255,255,0.025);
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:last-child {
-    width: 100% !important;
-    min-width: 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.5rem !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child button {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    padding: 0.75rem 0.55rem !important;
-    justify-content: center !important;
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
-    line-height: 1.15 !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child button span {
-    min-width: 0 !important;
-    text-align: center !important;
-  }
+  #customer-home-dashboard > section:has(button.bg-red-600) { min-width: 0 !important; width: 100% !important; padding: 1rem !important; gap: 1rem !important; overflow: hidden !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child { min-width: 0 !important; width: 100% !important; align-items: flex-start !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child > div:last-child { min-width: 0 !important; flex: 1 1 auto !important; max-width: 100% !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) span, #customer-home-dashboard > section:has(button.bg-red-600) h3, #customer-home-dashboard > section:has(button.bg-red-600) p { max-width: 100% !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) h3 { font-size: 1rem !important; line-height: 1.35 !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child { width: 100% !important; min-width: 0 !important; flex-direction: column !important; align-items: stretch !important; gap: .75rem !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:first-child { width: 100% !important; display: flex !important; align-items: center !important; justify-content: space-between !important; text-align: left !important; border: 1px solid rgba(255,255,255,.08); border-radius: .75rem; padding: .6rem .8rem; background: rgba(255,255,255,.025); }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:last-child { width: 100% !important; min-width: 0 !important; display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child button { width: 100% !important; min-width: 0 !important; max-width: 100% !important; padding: .75rem .55rem !important; justify-content: center !important; white-space: normal !important; overflow-wrap: anywhere !important; line-height: 1.15 !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child button span { min-width: 0 !important; text-align: center !important; }
 }
-
 @media (max-width: 420px) {
   #customer-home-dashboard > section:has(#btn-quick-book) { grid-template-columns: 1fr; }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) {
-    padding: 0.8rem !important;
-    border-width: 1px !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child {
-    gap: 0.75rem !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child > div:first-child {
-    width: 2.75rem !important;
-    height: 2.75rem !important;
-    flex: 0 0 2.75rem !important;
-  }
-
-  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:last-child {
-    grid-template-columns: 1fr;
-  }
+  #customer-home-dashboard > section:has(button.bg-red-600) { padding: .8rem !important; border-width: 1px !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child { gap: .75rem !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:first-child > div:first-child { width: 2.75rem !important; height: 2.75rem !important; flex: 0 0 2.75rem !important; }
+  #customer-home-dashboard > section:has(button.bg-red-600) > div:last-child > div:last-child { grid-template-columns: 1fr; }
 }
-
-/* Cinematic category wall */
 #console-fuzzy-buttons-section { isolation: isolate; }
 #console-fuzzy-buttons-section .category-wall { scrollbar-width: none; }
 #console-fuzzy-buttons-section .category-wall::-webkit-scrollbar { display: none; }
 #console-fuzzy-buttons-section .category-card { will-change: transform, opacity; }
+@media (max-width: 767px) { #console-fuzzy-buttons-section .category-wall { margin-inline: -.25rem; padding-inline: .25rem; } }
 
-@media (max-width: 767px) {
-  #console-fuzzy-buttons-section .category-wall { margin-inline: -0.25rem; padding-inline: 0.25rem; }
+/* ================================================================
+   GAME DISCOVERY / LAUNCHER MODE
+   ================================================================ */
+#screen-game-discovery { max-width: 1540px; margin-inline: auto; gap: clamp(2.75rem, 5vw, 5.5rem) !important; padding-bottom: clamp(4rem, 8vw, 9rem) !important; }
+#screen-game-discovery > div:first-child { position: relative; padding: clamp(2.25rem, 5vw, 5rem) 0 !important; border-bottom: 0 !important; }
+#screen-game-discovery > div:first-child::before { content: 'GAME LIBRARY / READY TO PLAY'; display: block; color: rgba(220,38,38,.9); font-size: 9px; font-weight: 900; letter-spacing: .42em; margin-bottom: 1rem; }
+#screen-game-discovery > div:first-child::after { content: ''; position: absolute; left: 0; bottom: 0; width: min(460px, 65%); height: 2px; background: linear-gradient(90deg, rgba(220,38,38,1), rgba(220,38,38,0)); }
+#screen-game-discovery > div:first-child h1 { font-size: clamp(2.3rem, 5.2vw, 5rem) !important; line-height: .92 !important; letter-spacing: -.055em !important; max-width: 900px; }
+#screen-game-discovery > div:first-child h1 svg { width: clamp(2rem, 4vw, 3.5rem) !important; height: clamp(2rem, 4vw, 3.5rem) !important; }
+#screen-game-discovery > div:first-child p { max-width: 700px !important; margin-top: 1.35rem !important; font-size: clamp(.8rem, 1.15vw, 1rem) !important; line-height: 1.85 !important; }
+#screen-game-discovery > div:nth-child(2) { padding: clamp(1rem, 2vw, 1.5rem) !important; border-radius: 1.5rem !important; background: linear-gradient(145deg, rgba(255,255,255,.05), rgba(255,255,255,.012)) !important; box-shadow: 0 24px 90px rgba(0,0,0,.3); }
+#game-search-input { min-height: 54px; font-size: .82rem !important; border-radius: 1rem !important; }
+#screen-game-discovery > div:nth-child(3) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: clamp(1rem, 2vw, 1.75rem) !important; }
+#screen-game-discovery > div:nth-child(3) > div { min-width: 0; border-radius: 1.5rem !important; background: #090909 !important; border-color: rgba(255,255,255,.075) !important; box-shadow: 0 18px 55px rgba(0,0,0,.28); transition: transform .45s cubic-bezier(.2,.8,.2,1), border-color .3s ease, box-shadow .45s ease !important; }
+#screen-game-discovery > div:nth-child(3) > div:hover { transform: translateY(-9px) scale(1.012); border-color: rgba(220,38,38,.48) !important; box-shadow: 0 30px 85px rgba(0,0,0,.55), 0 0 40px rgba(220,38,38,.08); }
+#screen-game-discovery > div:nth-child(3) > div > div:first-child { aspect-ratio: 16 / 10 !important; }
+#screen-game-discovery > div:nth-child(3) > div > div:first-child img { transition: transform .75s cubic-bezier(.2,.8,.2,1), filter .5s ease !important; filter: saturate(.9) contrast(1.02); }
+#screen-game-discovery > div:nth-child(3) > div:hover > div:first-child img { transform: scale(1.075) !important; filter: saturate(1.14) contrast(1.05); }
+#screen-game-discovery > div:nth-child(3) > div > div:first-child::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,.05), transparent 42%, rgba(0,0,0,.78)); }
+#screen-game-discovery > div:nth-child(3) > div > div:last-child { padding: 1.15rem !important; }
+#screen-game-discovery > div:nth-child(3) h4 { font-size: .88rem !important; letter-spacing: -.015em !important; }
+#screen-game-discovery > div:nth-child(3) button { transition: transform .2s ease, background-color .2s ease !important; }
+#screen-game-discovery > div:nth-child(3) button:hover { transform: translateX(2px); }
+#game-details-modal-content { max-width: 1080px !important; border-radius: 1.75rem !important; box-shadow: 0 40px 150px rgba(0,0,0,.8), 0 0 80px rgba(220,38,38,.08); }
+#game-details-modal-content > div:first-child { height: clamp(320px, 43vw, 500px) !important; }
+#game-details-modal-content > div:nth-child(2) { padding: clamp(1.25rem, 4vw, 2.75rem) !important; gap: clamp(1.5rem, 3vw, 2.75rem) !important; }
+@media (min-width: 900px) { #screen-game-discovery > div:nth-child(3) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
+@media (min-width: 1280px) { #screen-game-discovery > div:nth-child(3) { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; } }
+@media (max-width: 640px) {
+  #screen-game-discovery { gap: 2.25rem !important; }
+  #screen-game-discovery > div:first-child { padding: 1.5rem 0 2rem !important; }
+  #screen-game-discovery > div:first-child h1 { font-size: clamp(2rem, 12vw, 3.15rem) !important; }
+  #screen-game-discovery > div:nth-child(2) { border-radius: 1.25rem !important; }
+  #screen-game-discovery > div:nth-child(3) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .75rem !important; }
+  #screen-game-discovery > div:nth-child(3) > div { border-radius: 1rem !important; }
+  #screen-game-discovery > div:nth-child(3) > div > div:last-child { padding: .8rem !important; }
+  #screen-game-discovery > div:nth-child(3) h4 { font-size: .72rem !important; }
+  #game-details-modal-overlay { padding: .65rem !important; }
+  #game-details-modal-content { max-height: 95vh !important; border-radius: 1.25rem !important; }
+  #game-details-modal-content > div:first-child { height: 275px !important; }
 }
+@media (max-width: 380px) { #screen-game-discovery > div:nth-child(3) { grid-template-columns: 1fr !important; } }
