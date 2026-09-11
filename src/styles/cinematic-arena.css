@@ -31,8 +31,8 @@
 
 /* ================================================================
    MOBILE HERO / STATUS COMPOSITION
-   Keep the game title centered while moving the compact live-status
-   controls onto the row immediately above the Available platforms.
+   Keep the game title left-bottom aligned while keeping the compact
+   live-status controls and availability row centered.
    ================================================================ */
 @media (max-width: 767px) {
   #hero-slider-main {
@@ -41,23 +41,24 @@
     padding-bottom: 1rem !important;
   }
 
-  /* Center the main game title, category and tagline on mobile. */
+  /* Main game title: left aligned and anchored toward the lower hero. */
   #hero-slider-main > div.relative.z-20.my-auto.py-4 {
     width: 100% !important;
     max-width: none !important;
     margin-top: auto !important;
-    margin-bottom: auto !important;
+    margin-bottom: 0 !important;
     padding-top: 1rem !important;
     padding-bottom: 1rem !important;
-    text-align: center !important;
+    text-align: left !important;
+    align-self: flex-end !important;
   }
   #hero-slider-main > div.relative.z-20.my-auto.py-4 > div:first-child {
-    justify-content: center !important;
+    justify-content: flex-start !important;
   }
   #hero-slider-main > div.relative.z-20.my-auto.py-4 h1,
   #hero-slider-main > div.relative.z-20.my-auto.py-4 p {
-    margin-left: auto !important;
-    margin-right: auto !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
   }
   #hero-slider-main > div.relative.z-20.my-auto.py-4 p {
     max-width: 92% !important;
