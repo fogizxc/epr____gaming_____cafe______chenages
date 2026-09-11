@@ -55,8 +55,7 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
     setMutedStates((current) => ({ ...current, [category]: !current[category] }));
   };
 
-  // Auto-swipe only the arena carousel. Never use scrollIntoView here because it can
-  // vertically reposition the entire page when a card changes.
+  // Auto-preview changes only the horizontal arena carousel. The page itself never moves.
   useEffect(() => {
     const wall = wallRef.current;
     if (!wall) return;
@@ -97,12 +96,12 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
         <div className="max-w-3xl">
           <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.42em] text-red-500"><Sparkles className="h-3.5 w-3.5" />Choose your arena</div>
           <h2 className="text-[clamp(2.25rem,5vw,4.75rem)] font-black uppercase leading-[0.9] tracking-[-0.055em] text-white">Your game.<br /><span className="text-white/35">Your arena.</span></h2>
-          <p className="mt-5 max-w-2xl text-sm leading-7 text-white/45 sm:text-base">Five ways to play. The arena carousel moves automatically — hover or swipe when you want to take control.</p>
+          <p className="mt-5 max-w-2xl text-sm leading-7 text-white/45 sm:text-base">Five ways to play. Swipe the arena cards to preview the next experience.</p>
         </div>
         <div className="flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[9px] font-black uppercase tracking-[0.2em] text-white/45"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/60" /><span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" /></span>Auto preview</div>
       </div>
 
-      <div ref={wallRef} className="category-wall flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-6 sm:gap-5 lg:gap-6" style={{ scrollbarWidth: 'none' }}>
+      <div ref={wallRef} className="category-wall flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-6 sm:gap-5 lg:gap-6" style={{ scrollbarWidth: 'none', touchAction: 'pan-x' }}>
         {FEATURED_CATEGORIES.map((item, index) => {
           const style = accentStyles[item.accent];
           const availableCount = getAvailableCount(item.category);
@@ -135,8 +134,6 @@ export const FuzzyConsoleButtons: React.FC<FuzzyConsoleButtonsProps> = ({ onSele
           );
         })}
       </div>
-
-      <div className="mt-2 flex items-center justify-between px-1 text-[8px] font-black uppercase tracking-[0.2em] text-white/20 sm:mt-3"><span>Auto-swiping every 5 seconds</span><span>Hover / focus to pause</span><span>Swipe manually anytime</span></div>
     </section>
   );
 };
