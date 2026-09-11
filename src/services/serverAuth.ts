@@ -12,15 +12,11 @@ export type ServerAuthUser = {
   avatar?: string;
 };
 
-export type AuthResult = {
-  success: boolean;
-  error?: string;
-  user?: ServerAuthUser;
-};
+export type AuthResult = { success: boolean; error?: string; user?: ServerAuthUser };
 
 function persist(payload: any) {
   if (payload.accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken);
-  if (payload.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   if (payload.user) {
     localStorage.setItem('nexus_gaming_cafe_v1_currentUser', JSON.stringify(payload.user));
     localStorage.setItem('nexus_gaming_cafe_v1_isLoggedIn', 'true');
@@ -29,25 +25,15 @@ function persist(payload: any) {
 }
 
 export async function serverLogin(identifier: string, password: string): Promise<AuthResult> {
-  const response = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idOrUsername: identifier, password }),
-  });
+  const response = await fetch('/api/auth/login', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idOrUsername: identifier, password }) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) return { success: false, error: payload?.error || 'Invalid credentials' };
   persist(payload);
   return { success: true, user: payload.user };
 }
 
-export async function serverRegister(params: {
-  name: string; gamerTag?: string; email: string; phone?: string; password: string;
-}): Promise<AuthResult> {
-  const response = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-  });
+export async function serverRegister(params: { name: string; gamerTag?: string; email: string; phone?: string; password: string }): Promise<AuthResult> {
+  const response = await fetch('/api/auth/register', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(params) });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) return { success: false, error: payload?.error || 'Unable to create account' };
   persist(payload);
