@@ -8,6 +8,7 @@ const requiredPublic = [
   "/api/auth/register",
   "/api/auth/login",
   "/api/auth/refresh",
+  "/api/auth/logout",
   "/api/payments/webhook",
   "/api/membership/payment-webhook",
   "/api/fnb/payment-webhook",
@@ -16,9 +17,7 @@ const requiredPublic = [
 const requiredAdmin = ["/api/admin/"];
 for (const route of requiredPublic) if (!security.includes(route)) throw new Error(`SECURITY_MISSING_PUBLIC_ROUTE:${route}`);
 for (const route of requiredAdmin) if (!security.includes(route)) throw new Error(`SECURITY_MISSING_ADMIN_POLICY:${route}`);
-if (!security.includes("Unknown /api/*") && !security.includes("fail closed") && !security.includes("401")) {
-  throw new Error("SECURITY_FAIL_CLOSED_POLICY_NOT_DETECTABLE");
-}
+if (!security.includes("Unknown /api/*") && !security.includes("fail closed") && !security.includes("401")) throw new Error("SECURITY_FAIL_CLOSED_POLICY_NOT_DETECTABLE");
 
 const protectedMutations = [
   "POST /api/bookings",
@@ -31,13 +30,11 @@ const protectedMutations = [
 ];
 for (const route of protectedMutations) if (!preload.includes(route)) throw new Error(`SECURITY_ROUTE_NOT_WIRED:${route}`);
 if (!preload.includes("apiSecurityPolicy")) throw new Error("SECURITY_POLICY_NOT_WIRED");
+if (!preload.includes('this.post("/api/integrations/google-sheets/sync",apiSecurityPolicy')) throw new Error("SECURITY_GOOGLE_SHEETS_SYNC_NOT_PROTECTED");
 
-// Regression contracts for production request tracing and abuse protection.
 for (const marker of ["randomUUID", "X-Request-ID", "AUTH_RATE_LIMIT", "Retry-After", "req.ip"]) {
   if (!security.includes(marker)) throw new Error(`SECURITY_HARDENING_MISSING:${marker}`);
 }
-if (security.includes("x-forwarded-for") && !security.includes("req.ip")) {
-  throw new Error("SECURITY_CLIENT_IP_MUST_USE_TRUST_PROXY_CONFIGURATION");
-}
+if (security.includes("x-forwarded-for") && !security.includes("req.ip")) throw new Error("SECURITY_CLIENT_IP_MUST_USE_TRUST_PROXY_CONFIGURATION");
 
-console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing and auth throttling enabled).`);
+console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, and Sheets sync protection enabled).`);
