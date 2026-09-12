@@ -15,6 +15,7 @@ import { Footer } from './components/Footer';
 import { CafeStatusBar } from './components/CafeStatusBar';
 import { PasswordResetPage } from './components/PasswordResetPage';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
+import { EmployeeQrScanner } from './components/employee/EmployeeQrScanner';
 import { GamingServiceCategory } from './types';
 
 const MainAppLayout: React.FC = () => {
@@ -26,9 +27,7 @@ const MainAppLayout: React.FC = () => {
   const handleOpenQuickWalkIn = () => setShowWalkInModal(true);
   const handleOpenFnb = (sessionId: string) => setFnbSessionId(sessionId);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  }, [activeNav, currentRole]);
+  useEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }); }, [activeNav, currentRole]);
 
   return <div className="flex min-h-screen bg-[#050505] text-[#e0e0e0] font-sans selection:bg-red-600 selection:text-white">
     <Sidebar onOpenQuickWalkIn={handleOpenQuickWalkIn} />
@@ -39,13 +38,14 @@ const MainAppLayout: React.FC = () => {
         {isLoggedIn && currentRole === 'EMPLOYEE' && <EmployeePortal onOpenFnB={handleOpenFnb} onOpenQuickWalkIn={handleOpenQuickWalkIn} />}
         {isLoggedIn && currentRole === 'ADMIN' && <AdminPortal />}
       </main>
+      {isLoggedIn && (currentRole === 'EMPLOYEE' || currentRole === 'ADMIN') && <EmployeeQrScanner />}
       <Footer onOpenBooking={() => handleOpenBooking()} />
     </div>
     {(showBookingModal || selectedStationForBooking) && <BookingModal initialSystem={selectedStationForBooking} onClose={() => { setShowBookingModal(false); setSelectedStationForBooking(null); }} />}
     {showWalkInModal && <QuickWalkInModal onClose={() => setShowWalkInModal(false)} />}
     {activeInvoiceForModal && <InvoiceModal invoice={activeInvoiceForModal} onClose={() => setActiveInvoiceForModal(null)} />}
     {fnbSessionId && <FnbModal sessionId={fnbSessionId} onClose={() => setFnbSessionId(null)} />}
-    {activeConsoleForGamesModal && <ProductionConsoleGamesModal category={activeConsoleForGamesModal.category} initialStationId={activeConsoleForGamesModal.systemId} onClose={() => setActiveConsoleForGamesModal(null)} onBookStation={() => { setActiveConsoleForGamesModal(null); setShowBookingModal(true); }} />}
+    {activeConsoleForGamesModal && <ProductionConsoleGamesModal category={activeConsoleForGamesModal.category} initialStationId={activeConsoleForGamesModal.systemId} onClose={() => { setActiveConsoleForGamesModal(null); setShowBookingModal(true); }} />}
     <AuthModal />
     <CafeStatusBar />
   </div>;
