@@ -12,6 +12,7 @@ import { handleProductionAvailabilitySummary } from "../services/productionAvail
 import { handleProductionRescheduleBooking } from "../services/productionRescheduleHandler.js";
 import { handleProductionCustomerBookings } from "../services/productionCustomerBookingsHandler.js";
 import { handleProductionCheckInBooking, handleProductionCancelBooking, handleProductionExtendSession, handleProductionEndSession, handleProductionMyActiveSession } from "../services/productionSessionHandlers.js";
+import { handleIssueBookingQr, handleEmployeeQrCheckIn, ensureQrCheckInIndexes } from "../services/productionQrCheckInHandlers.js";
 import { handleProductionCreatePaymentOrder, handleProductionVerifyPayment } from "../services/productionPaymentHandlers.js";
 import { handleProductionCreateInvoice, handleProductionWalletBalance, handleProductionWalletCredit, handleProductionWalletDebit, handleProductionRequestRefund } from "../services/productionBillingHandlers.js";
 import { handleInvoicePdf } from "../services/productionInvoicePdfHandlers.js";
@@ -46,6 +47,7 @@ const productionOverrides: Record<string, any> = {
   "POST /api/bookings": handleProductionCreateBooking,
   "GET /api/bookings/me": handleProductionCustomerBookings,
   "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
+  "POST /api/bookings/:id/qr": handleIssueBookingQr,
   "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
   "POST /api/bookings/:id/reschedule": handleProductionRescheduleBooking,
   "POST /api/sessions/:id/extend": handleProductionExtendSession,
@@ -99,6 +101,7 @@ const productionOverrides: Record<string, any> = {
   "POST /api/employee/cash-ledger/entry": addCashLedger,
   "POST /api/employee/walk-in": handleEmployeeWalkInFinancial,
   "POST /api/employee/bookings/check-in": checkIn,
+  "POST /api/employee/check-in/qr": handleEmployeeQrCheckIn,
   "POST /api/employee/sessions/:sessionId/extend": extendSession,
   "POST /api/employee/sessions/:sessionId/transfer": transferSession,
   "POST /api/employee/sessions/:sessionId/end": handleEmployeeEndSessionFinancial,
@@ -152,7 +155,7 @@ const originalListen = (express.application as any).listen;
     try { const db = await getMongoDb(); await db.command({ ping: 1 }); return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } }); }
     catch { return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } }); }
   });
-  void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).catch((error) => console.error("Authentication index bootstrap failed:", error));
+  void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).then(() => ensureQrCheckInIndexes()).catch((error) => console.error("Authentication/index bootstrap failed:", error));
   startSessionLifecycle();
   startFnbLifecycle();
   return originalListen.apply(this, args);
