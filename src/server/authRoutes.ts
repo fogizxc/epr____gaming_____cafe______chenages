@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { ObjectId } from "mongodb";
-import { getMongoDb } from "./mongodb.js";
+import { getMongoClient, getMongoDb } from "./mongodb.js";
 import {
   type AppRole,
   type AuthenticatedRequest,
@@ -56,36 +56,86 @@ function clearRefreshCookie(res: Response) {
   res.clearCookie(REFRESH_COOKIE, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/api/auth" });
 }
 
+function authConfigurationError(error: any) {
+  const message = String(error?.message || "");
+  if (message.includes("AUTH_SECRET must be configured")) return "Server authentication is not configured. Add AUTH_SECRET (at least 32 characters) in Render environment variables.";
+  if (message.includes("MONGODB_URI is not configured")) return "Database is not configured. Add MONGODB_URI in Render environment variables.";
+  return null;
+}
+
 export function registerAuthRoutes(app: Express) {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
+    let insertedUserId: ObjectId | null = null;
     try {
       const { name, email, phone, password, gamerTag } = req.body || {};
       if (typeof name !== "string" || name.trim().length < 2 || name.length > 100) return res.status(400).json({ success: false, error: "A valid name is required" });
       if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ success: false, error: "A valid email is required" });
       if (!validatePassword(password)) return res.status(400).json({ success: false, error: "Password must be 8-128 characters" });
       if (phone !== undefined && (typeof phone !== "string" || phone.trim().length > 30)) return res.status(400).json({ success: false, error: "Invalid phone number" });
+
+      // Validate the signing secret before writing anything to MongoDB. Previously a
+      // missing/invalid AUTH_SECRET could create the user and then fail while creating
+      // the access token, leaving a half-created account behind.
+      const authSecret = process.env.AUTH_SECRET?.trim();
+      if (!authSecret || authSecret.length < 32) {
+        return res.status(503).json({ success: false, error: "Server authentication is not configured. Add AUTH_SECRET (at least 32 characters) in Render environment variables." });
+      }
+
       const db = await getMongoDb();
       const normalizedEmail = email.trim().toLowerCase();
-      const existing = await db.collection("users").findOne({ email: normalizedEmail });
-      if (existing) return res.status(409).json({ success: false, error: "An account with this email already exists" });
+      const normalizedPhone = typeof phone === "string" && phone.trim() ? phone.trim() : undefined;
+      const existing = await db.collection("users").findOne({
+        $or: [
+          { email: normalizedEmail },
+          ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
+        ],
+      });
+      if (existing) {
+        if (String(existing.email || "").toLowerCase() === normalizedEmail) return res.status(409).json({ success: false, error: "An account with this email already exists" });
+        return res.status(409).json({ success: false, error: "An account with this phone number already exists" });
+      }
+
       const { hash, salt } = hashPassword(password);
+      const now = new Date();
       const user = {
         name: name.trim(), email: normalizedEmail,
-        phone: typeof phone === "string" ? phone.trim() : undefined,
-        gamerTag: typeof gamerTag === "string" ? gamerTag.trim().slice(0, 50) : undefined,
+        ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+        ...(typeof gamerTag === "string" && gamerTag.trim() ? { gamerTag: gamerTag.trim().slice(0, 50) } : {}),
         passwordHash: hash, passwordSalt: salt, role: "CUSTOMER" as const, permissions: [],
-        isActive: true, isEmailVerified: false, createdAt: new Date(), updatedAt: new Date(),
+        isActive: true, isEmailVerified: false, createdAt: now, updatedAt: now,
       };
-      const result = await db.collection("users").insertOne(user);
-      const created = { ...user, _id: result.insertedId };
-      const accessToken = createAccessToken({ id: String(result.insertedId), email: created.email, name: created.name, role: created.role, permissions: [] });
-      const refreshToken = await createRefreshToken(String(result.insertedId));
-      setRefreshCookie(res, refreshToken);
-      return res.status(201).json({ success: true, accessToken, refreshToken: CLIENT_REFRESH_MARKER, user: publicUser(created) });
+
+      const client = getMongoClient();
+      if (!client) return res.status(503).json({ success: false, error: "Database connection is unavailable. Please try again." });
+
+      // Keep the user and refresh-token records consistent. If token creation fails,
+      // the user insert is rolled back instead of leaving an unusable account.
+      const session = client.startSession();
+      try {
+        let accessToken = "";
+        let refreshToken = "";
+        let created: any;
+        await session.withTransaction(async () => {
+          const result = await db.collection("users").insertOne(user, { session });
+          insertedUserId = result.insertedId;
+          created = { ...user, _id: result.insertedId };
+          accessToken = createAccessToken({ id: String(result.insertedId), email: created.email, name: created.name, role: created.role, permissions: [] });
+          refreshToken = await createRefreshTokenInSession(db, session, String(result.insertedId));
+        });
+        setRefreshCookie(res, refreshToken);
+        return res.status(201).json({ success: true, accessToken, refreshToken: CLIENT_REFRESH_MARKER, user: publicUser(created) });
+      } finally {
+        await session.endSession();
+      }
     } catch (error: any) {
-      if (error?.code === 11000) return res.status(409).json({ success: false, error: "An account with that email or phone already exists" });
+      if (error?.code === 11000) {
+        const key = Object.keys(error?.keyPattern || {})[0];
+        return res.status(409).json({ success: false, error: key === "phone" ? "An account with this phone number already exists" : "An account with that email already exists" });
+      }
+      const configurationError = authConfigurationError(error);
+      if (configurationError) return res.status(503).json({ success: false, error: configurationError });
       console.error("auth/register", error);
-      return res.status(500).json({ success: false, error: "Unable to create account" });
+      return res.status(500).json({ success: false, error: "Unable to create account. Please try again." });
     }
   });
 
@@ -162,4 +212,19 @@ export function registerAuthRoutes(app: Express) {
       return res.status(500).json({ success: false, error: "Unable to load account" });
     }
   });
+}
+
+async function createRefreshTokenInSession(db: any, session: any, userId: string) {
+  const crypto = await import("node:crypto");
+  const raw = crypto.randomBytes(48).toString("base64url");
+  const tokenHash = crypto.createHash("sha256").update(raw).digest("hex");
+  const now = new Date();
+  await db.collection("refresh_tokens").insertOne({
+    userId,
+    tokenHash,
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+    revokedAt: null,
+  }, { session });
+  return raw;
 }
