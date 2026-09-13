@@ -22,6 +22,29 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Recover corrupted legacy client state before React mounts.
+      // This prevents array operations such as .filter() from crashing the UI.
+      (() => {
+        const prefix = 'nexus_gaming_cafe_v1_';
+        const arrayKeys = [
+          'systems', 'activeSessions', 'bookings', 'pricingRules', 'priceHistory',
+          'tournaments', 'tournamentTeams', 'tournamentMatches', 'fnbProducts',
+          'invoices', 'walletTransactions', 'waitlist', 'auditLogs', 'registeredAccounts'
+        ];
+        for (const key of arrayKeys) {
+          const storageKey = prefix + key;
+          try {
+            const raw = localStorage.getItem(storageKey);
+            if (raw !== null && !Array.isArray(JSON.parse(raw))) {
+              localStorage.removeItem(storageKey);
+            }
+          } catch {
+            localStorage.removeItem(storageKey);
+          }
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
