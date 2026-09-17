@@ -19,7 +19,7 @@ if (!security.includes("Unknown /api/*") && !security.includes("fail closed") &&
 const protectedMutations = ["POST /api/bookings", "POST /api/wallet/debit", "POST /api/membership/purchase", "POST /api/fnb/orders", "POST /api/tournaments/payment-verify", "POST /api/employee/walk-in", "POST /api/employee/fnb/order"];
 for (const route of protectedMutations) if (!preload.includes(route)) throw new Error(`SECURITY_ROUTE_NOT_WIRED:${route}`);
 if (!preload.includes("apiSecurityPolicy")) throw new Error("SECURITY_POLICY_NOT_WIRED");
-if (!preload.includes('this.post("/api/integrations/google-sheets/sync",apiSecurityPolicy')) throw new Error("SECURITY_GOOGLE_SHEETS_SYNC_NOT_PROTECTED");
+if (!/this\.post\("\/api\/integrations\/google-sheets\/sync",\s*apiSecurityPolicy/.test(preload)) throw new Error("SECURITY_GOOGLE_SHEETS_SYNC_NOT_PROTECTED");
 if (!preload.includes("registerPasswordResetRoutes") || !preload.includes("ensurePasswordResetIndexes")) throw new Error("SECURITY_PASSWORD_RESET_NOT_WIRED");
 
 for (const marker of ["randomUUID", "X-Request-ID", "AUTH_RATE_LIMIT", "Retry-After", "req.ip"]) if (!security.includes(marker)) throw new Error(`SECURITY_HARDENING_MISSING:${marker}`);
@@ -30,6 +30,6 @@ for (const marker of ["REFRESH_COOKIE", "httpOnly: true", "CLIENT_REFRESH_MARKER
 if (!authRoutes.includes('refreshToken: CLIENT_REFRESH_MARKER')) throw new Error("SECURITY_REFRESH_TOKEN_MUST_NOT_BE_RETURNED_TO_BROWSER");
 for (const marker of ["RESET_TTL_MS", "password_reset_tokens", "crypto.randomBytes(32)", "tokenHash", "expiresAt", "usedAt", "generic", "hashPassword(password)", "revokedReason: \"password_reset\""]) if (!passwordReset.includes(marker)) throw new Error(`SECURITY_PASSWORD_RESET_INCOMPLETE:${marker}`);
 if (cafeContext.includes("password: account.password") || cafeContext.includes("password: account.passwordHash")) throw new Error("SECURITY_CLIENT_ACCOUNT_SYNC_MUST_NOT_EXPORT_PASSWORDS");
-if (!cafeContext.includes("Account creation is handled by production authentication service")) throw new Error("SECURITY_LEGACY_CLIENT_ACCOUNT_CREATION_NOT_DISABLED");
+if (!cafeContext.includes("Account creation is handled by the production authentication service")) throw new Error("SECURITY_LEGACY_CLIENT_ACCOUNT_CREATION_NOT_DISABLED");
 
 console.log(`Security contract checks passed (${requiredPublic.length} public routes, ${protectedMutations.length} protected mutations, request tracing, auth throttling, login abuse guard, HttpOnly refresh cookies, password-reset token lifecycle, and credential-sync protection enabled).`);
