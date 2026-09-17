@@ -95,7 +95,7 @@ interface CafeContextType {
 
 const CafeContext = createContext<CafeContextType | null>(null);
 const STORAGE_KEY_PREFIX = 'nexus_gaming_cafe_v1_';
-function loadFromStorage<T>(key: string, fallback: T): T { try { const item = localStorage.getItem(STORAGE_KEY_PREFIX + key); return item ? JSON.parse(item) : fallback; } catch { return fallback; } }
+function loadFromStorage<T>(key: string, fallback: T): T { try { const item = localStorage.getItem(STORAGE_KEY_PREFIX + key); if (!item) return fallback; const parsed = JSON.parse(item); if (Array.isArray(fallback)) return (Array.isArray(parsed) ? parsed : fallback) as T; if (fallback && typeof fallback === 'object' && (parsed === null || typeof parsed !== 'object')) return fallback; return parsed ?? fallback; } catch { return fallback; } }
 function saveToStorage<T>(key: string, value: T) { try { localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(value)); } catch {} }
 
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
