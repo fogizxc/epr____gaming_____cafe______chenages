@@ -17,7 +17,10 @@ export const ConsoleGamesModal: React.FC<ConsoleGamesModalProps> = ({ category, 
   const isTargetCategory = (sysCat: GamingServiceCategory) => sysCat === category || (category === 'PS5' && sysCat === 'PlayStation') || (category === 'PlayStation' && sysCat === 'PS5');
   const systemsInCategory = useMemo(() => safeSystems.filter(s => isTargetCategory(s.category)), [safeSystems, category]);
   const activeSystem = useMemo(() => selectedStationId === 'ALL' ? null : systemsInCategory.find(s => s.id === selectedStationId) || null, [selectedStationId, systemsInCategory]);
-  const categoryGamesData = useMemo(() => getGamesForCategory(category, safeSystems), [category, safeSystems]);
+  const categoryGamesData = useMemo(() => {
+    const result = getGamesForCategory(category, safeSystems);
+    return Array.isArray(result) ? result : [];
+  }, [category, safeSystems]);
   const allGenres = useMemo(() => ['ALL', ...Array.from(new Set(categoryGamesData.map(({game}) => String(game?.category || 'Other'))))], [categoryGamesData]);
   const filteredGames = useMemo(() => categoryGamesData.filter(({ game, installedStations }) => {
     const safeGame = game || ({} as ConsoleGameItem); const safeInstalled = Array.isArray(installedStations) ? installedStations : [];
