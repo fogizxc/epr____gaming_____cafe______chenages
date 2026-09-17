@@ -18,7 +18,7 @@ import { handleProductionCreateInvoice, handleProductionWalletBalance, handlePro
 import { handleInvoicePdf } from "../services/productionInvoicePdfHandlers.js";
 import { handleAdminProcessRefund, handleAdminCreditNote } from "../services/productionRefundHandlers.js";
 import { handleAdminReconcileRefund } from "../services/productionRefundReconciliation.js";
-import { employeeDashboard, getShift, startShift, endShift, cashLedger, addCashLedger, walkIn, checkIn, extendSession, transferSession, endSession, waitlist, addWaitlist, assignWaitlist, removeWaitlist, maintenance, reportMaintenance, updateMaintenance, alerts, resolveAlert, activity, refunds, requestRefund, processRefund, customers, createCustomer } from "../services/productionEmployeeHandlers.js";
+import { employeeDashboard, getShift, startShift, endShift, cashLedger, addCashLedger, checkIn, extendSession, transferSession, waitlist, addWaitlist, assignWaitlist, removeWaitlist, maintenance, reportMaintenance, updateMaintenance, alerts, resolveAlert, activity, refunds, requestRefund, processRefund, customers, createCustomer } from "../services/productionEmployeeHandlers.js";
 import { handleEmployeeWalkInFinancial, handleEmployeeFnbFinancial, handleEmployeeEndSessionFinancial } from "../services/productionEmployeeFinancialHandlers.js";
 import { registerAdminRoutes } from "../services/productionAdminHandlers.js";
 import { handleMembershipMe, handlePurchaseMembership, handleConsumeMembershipHours } from "../services/productionMembershipHandlers.js";
@@ -33,24 +33,128 @@ import { handleTournamentFormResponse } from "../services/productionTournamentFo
 import { handleGoogleSheetsSync, handleAdminGameSyncPreview, handleGoogleSheetsPull, handleGoogleSheetsStatus } from "../services/productionGameSheetsHandlers.js";
 import { handleProductionRazorpayPaymentWebhook, handleProductionRazorpayMembershipWebhook, handleProductionRazorpayFnbWebhook, handleProductionRazorpayTournamentWebhook } from "../services/productionRazorpayWebhookGateway.js";
 
-export function registerProductionRoutes(app: express.Application): void {
-  const get = (path: string, handler: express.RequestHandler) => app.get(path, apiSecurityPolicy, handler);
-  const post = (path: string, handler: express.RequestHandler) => app.post(path, apiSecurityPolicy, handler);
-  const patch = (path: string, handler: express.RequestHandler) => app.patch(path, apiSecurityPolicy, handler);
-  const del = (path: string, handler: express.RequestHandler) => app.delete(path, apiSecurityPolicy, handler);
-  get("/api/stations", handleProductionGetStations); get("/api/stations/:id/availability", handleProductionAvailability); get("/api/stations/:id/availability-summary", handleProductionAvailabilitySummary);
-  post("/api/bookings", handleProductionCreateBooking); get("/api/bookings/me", handleProductionCustomerBookings); post("/api/bookings/:id/check-in", handleProductionCheckInBooking); post("/api/bookings/:id/qr", handleIssueBookingQr); post("/api/bookings/:id/cancel", handleProductionCancelBooking); post("/api/bookings/:id/reschedule", handleProductionRescheduleBooking);
-  post("/api/sessions/:id/extend", handleProductionExtendSession); post("/api/sessions/:id/end", handleProductionEndSession); get("/api/sessions/me", handleProductionMyActiveSession); post("/api/payments/create-order", handleProductionCreatePaymentOrder); post("/api/payments/verify", handleProductionVerifyPayment); post("/api/payments/webhook", handleProductionRazorpayPaymentWebhook);
-  post("/api/invoices", handleProductionCreateInvoice); get("/api/invoices/:id/pdf", handleInvoicePdf); get("/api/wallet/balance", handleProductionWalletBalance); post("/api/wallet/credit", handleProductionWalletCredit); post("/api/wallet/debit", handleProductionWalletDebit); post("/api/refunds", handleProductionRequestRefund);
-  get("/api/membership", handleMembershipMe); get("/api/membership/me", handleMembershipMe); post("/api/membership/purchase", handlePurchaseMembership); post("/api/membership/consume", handleConsumeMembershipHours); post("/api/membership/payment-order", handleCreateMembershipPaymentOrder); post("/api/membership/payment-verify", handleAtomicVerifyMembershipPayment); post("/api/membership/payment-webhook", handleAtomicMembershipWebhook);
-  get("/api/fnb/products", handleFnbProducts); get("/api/fnb/menu", handleFnbProducts); post("/api/fnb/orders", handleProductionCustomerFnbOrder); post("/api/fnb/order", handleProductionCustomerFnbOrder); post("/api/fnb/orders/:id/status", handleFnbOrderStatus); patch("/api/fnb/orders/:id/status", handleFnbOrderStatus); post("/api/fnb/payment-order", handleFnbPaymentOrder); post("/api/fnb/payment-verify", handleFnbPaymentVerify); post("/api/fnb/payment-webhook", handleProductionRazorpayFnbWebhook); post("/api/fnb/refunds", handleFnbCustomerRefund);
-  get("/api/financial/summary", handleAdminFinancialSummary); get("/api/financial/ledger", handleAdminFinancialLedger); get("/api/financial/reconciliation", handleAdminReconciliation); get("/api/financial/export", handleAdminFinancialExport);
-  get("/api/tournaments", handleTournamentList); get("/api/tournaments/:id", handleTournamentDetail); post("/api/tournaments/:id/register", handleTournamentRegister); post("/api/tournaments/payment-order", handleTournamentPaymentOrder); post("/api/tournaments/payment-verify", handleAtomicTournamentPaymentVerify); post("/api/tournaments/payment-webhook", handleProductionRazorpayTournamentWebhook);
-  post("/api/admin/games/sheets/status", handleGoogleSheetsStatus); post("/api/admin/games/sheets/preview", handleAdminGameSyncPreview); post("/api/admin/games/sheets/sync", handleGoogleSheetsSync); post("/api/admin/games/sheets/pull", handleGoogleSheetsPull);
-  get("/api/employee/dashboard", employeeDashboard); get("/api/employee/shift", getShift); post("/api/employee/shift/start", startShift); post("/api/employee/shift/end", endShift); get("/api/employee/cash-ledger", cashLedger); post("/api/employee/cash-ledger/entry", addCashLedger); post("/api/employee/walk-in", handleEmployeeWalkInFinancial); post("/api/employee/bookings/check-in", checkIn); post("/api/employee/check-in/qr", handleEmployeeQrCheckIn); post("/api/employee/sessions/:sessionId/extend", extendSession); post("/api/employee/sessions/:sessionId/transfer", transferSession); post("/api/employee/sessions/:sessionId/end", handleEmployeeEndSessionFinancial); get("/api/employee/waitlist", waitlist); post("/api/employee/waitlist/add", addWaitlist); post("/api/employee/waitlist/:waitlistId/assign", assignWaitlist); del("/api/employee/waitlist/:waitlistId", removeWaitlist); get("/api/employee/maintenance", maintenance); post("/api/employee/maintenance/report", reportMaintenance); post("/api/employee/maintenance/:ticketId/status", updateMaintenance); get("/api/employee/alerts", alerts); post("/api/employee/alerts/:alertId/resolve", resolveAlert); get("/api/employee/activity", activity); post("/api/employee/refunds/request", requestRefund); post("/api/employee/refunds/:refundId/action", processRefund); get("/api/employee/refunds", refunds); get("/api/employee/customers", customers); post("/api/employee/customers", createCustomer); post("/api/employee/fnb/order", handleEmployeeFnbFinancial);
-  registerAuthRoutes(app); registerPasswordResetRoutes(app); registerAdminRoutes(app); post("/api/admin/refunds/:id/process", handleAdminProcessRefund); post("/api/admin/refunds/:id/reconcile", handleAdminReconcileRefund); post("/api/admin/refunds/:id/credit-note", handleAdminCreditNote); post("/api/admin/fnb-refunds/:id/process", handleAdminFnbRefund); post("/api/admin/fnb-refunds/:id/credit-note", handleAdminFnbCreditNote); post("/api/admin/tournaments", handleAdminTournamentCreate); patch("/api/admin/tournaments/:id", handleAdminTournamentUpdate); get("/api/admin/tournaments/:id/teams", handleAdminTournamentTeams); post("/api/integrations/google-sheets/sync", handleGoogleSheetsSync); post("/api/integrations/google-forms/tournament-response", handleTournamentFormResponse);
-  app.get("/api/ready", async (_req, res) => { try { const db = await getMongoDb(); await db.command({ ping: 1 }); return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } }); } catch { return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } }); } });
-  void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).then(() => ensureQrCheckInIndexes()).then(() => getMongoDb()).then(db => db.collection("auth_rate_limits").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })).catch(error => console.error("Authentication/index bootstrap failed:", error));
-  startSessionLifecycle(); startFnbLifecycle();
+const productionOverrides: Record<string, express.RequestHandler> = {
+  "GET /api/stations": handleProductionGetStations,
+  "GET /api/stations/:id/availability": handleProductionAvailability,
+  "GET /api/stations/:id/availability-summary": handleProductionAvailabilitySummary,
+  "POST /api/bookings": handleProductionCreateBooking,
+  "GET /api/bookings/me": handleProductionCustomerBookings,
+  "POST /api/bookings/:id/check-in": handleProductionCheckInBooking,
+  "POST /api/bookings/:id/qr": handleIssueBookingQr,
+  "POST /api/bookings/:id/cancel": handleProductionCancelBooking,
+  "POST /api/bookings/:id/reschedule": handleProductionRescheduleBooking,
+  "POST /api/sessions/:id/extend": handleProductionExtendSession,
+  "POST /api/sessions/:id/end": handleProductionEndSession,
+  "GET /api/sessions/me": handleProductionMyActiveSession,
+  "POST /api/payments/create-order": handleProductionCreatePaymentOrder,
+  "POST /api/payments/verify": handleProductionVerifyPayment,
+  "POST /api/payments/webhook": handleProductionRazorpayPaymentWebhook,
+  "POST /api/invoices": handleProductionCreateInvoice,
+  "GET /api/invoices/:id/pdf": handleInvoicePdf,
+  "GET /api/wallet/balance": handleProductionWalletBalance,
+  "POST /api/wallet/credit": handleProductionWalletCredit,
+  "POST /api/wallet/debit": handleProductionWalletDebit,
+  "POST /api/refunds": handleProductionRequestRefund,
+  "GET /api/membership": handleMembershipMe,
+  "GET /api/membership/me": handleMembershipMe,
+  "POST /api/membership/purchase": handlePurchaseMembership,
+  "POST /api/membership/consume": handleConsumeMembershipHours,
+  "POST /api/membership/payment-order": handleCreateMembershipPaymentOrder,
+  "POST /api/membership/payment-verify": handleAtomicVerifyMembershipPayment,
+  "POST /api/membership/payment-webhook": handleAtomicMembershipWebhook,
+  "GET /api/fnb/products": handleFnbProducts,
+  "GET /api/fnb/menu": handleFnbProducts,
+  "POST /api/fnb/orders": handleProductionCustomerFnbOrder,
+  "POST /api/fnb/order": handleProductionCustomerFnbOrder,
+  "POST /api/fnb/orders/:id/status": handleFnbOrderStatus,
+  "PATCH /api/fnb/orders/:id/status": handleFnbOrderStatus,
+  "POST /api/fnb/payment-order": handleFnbPaymentOrder,
+  "POST /api/fnb/payment-verify": handleFnbPaymentVerify,
+  "POST /api/fnb/payment-webhook": handleProductionRazorpayFnbWebhook,
+  "POST /api/fnb/refunds": handleFnbCustomerRefund,
+  "GET /api/financial/summary": handleAdminFinancialSummary,
+  "GET /api/financial/ledger": handleAdminFinancialLedger,
+  "GET /api/financial/reconciliation": handleAdminReconciliation,
+  "GET /api/financial/export": handleAdminFinancialExport,
+  "GET /api/tournaments": handleTournamentList,
+  "GET /api/tournaments/:id": handleTournamentDetail,
+  "POST /api/tournaments/:id/register": handleTournamentRegister,
+  "POST /api/tournaments/payment-order": handleTournamentPaymentOrder,
+  "POST /api/tournaments/payment-verify": handleAtomicTournamentPaymentVerify,
+  "POST /api/tournaments/payment-webhook": handleProductionRazorpayTournamentWebhook,
+  "POST /api/admin/games/sheets/status": handleGoogleSheetsStatus,
+  "POST /api/admin/games/sheets/preview": handleAdminGameSyncPreview,
+  "POST /api/admin/games/sheets/sync": handleGoogleSheetsSync,
+  "POST /api/admin/games/sheets/pull": handleGoogleSheetsPull,
+  "GET /api/employee/dashboard": employeeDashboard,
+  "GET /api/employee/shift": getShift,
+  "POST /api/employee/shift/start": startShift,
+  "POST /api/employee/shift/end": endShift,
+  "GET /api/employee/cash-ledger": cashLedger,
+  "POST /api/employee/cash-ledger/entry": addCashLedger,
+  "POST /api/employee/walk-in": handleEmployeeWalkInFinancial,
+  "POST /api/employee/bookings/check-in": checkIn,
+  "POST /api/employee/check-in/qr": handleEmployeeQrCheckIn,
+  "POST /api/employee/sessions/:sessionId/extend": extendSession,
+  "POST /api/employee/sessions/:sessionId/transfer": transferSession,
+  "POST /api/employee/sessions/:sessionId/end": handleEmployeeEndSessionFinancial,
+  "GET /api/employee/waitlist": waitlist,
+  "POST /api/employee/waitlist/add": addWaitlist,
+  "POST /api/employee/waitlist/:waitlistId/assign": assignWaitlist,
+  "DELETE /api/employee/waitlist/:waitlistId": removeWaitlist,
+  "GET /api/employee/maintenance": maintenance,
+  "POST /api/employee/maintenance/report": reportMaintenance,
+  "POST /api/employee/maintenance/:ticketId/status": updateMaintenance,
+  "GET /api/employee/alerts": alerts,
+  "POST /api/employee/alerts/:alertId/resolve": resolveAlert,
+  "GET /api/employee/activity": activity,
+  "POST /api/employee/refunds/request": requestRefund,
+  "POST /api/employee/refunds/:refundId/action": processRefund,
+  "GET /api/employee/refunds": refunds,
+  "GET /api/employee/customers": customers,
+  "POST /api/employee/customers": createCustomer,
+  "POST /api/employee/fnb/order": handleEmployeeFnbFinancial,
+};
+
+function registerProtected(app: express.Application, method: "get" | "post" | "put" | "patch" | "delete", path: string, ...handlers: express.RequestHandler[]) {
+  const override = productionOverrides[`${method.toUpperCase()} ${path}`];
+  if (override) return app[method](path, apiSecurityPolicy, override);
+  return app[method](path, apiSecurityPolicy, ...handlers);
 }
-export function applyProductionPreload(app: express.Application): void { registerProductionRoutes(app); }
+
+let initialized = false;
+export function applyProductionPreload(app: express.Application): void {
+  if (initialized) return;
+  initialized = true;
+  registerAuthRoutes(app);
+  registerPasswordResetRoutes(app);
+  registerAdminRoutes(app);
+  registerProtected(app, "post", "/api/admin/refunds/:id/process", handleAdminProcessRefund);
+  registerProtected(app, "post", "/api/admin/refunds/:id/reconcile", handleAdminReconcileRefund);
+  registerProtected(app, "post", "/api/admin/refunds/:id/credit-note", handleAdminCreditNote);
+  registerProtected(app, "post", "/api/admin/fnb-refunds/:id/process", handleAdminFnbRefund);
+  registerProtected(app, "post", "/api/admin/fnb-refunds/:id/credit-note", handleAdminFnbCreditNote);
+  registerProtected(app, "post", "/api/admin/tournaments", handleAdminTournamentCreate);
+  registerProtected(app, "patch", "/api/admin/tournaments/:id", handleAdminTournamentUpdate);
+  registerProtected(app, "get", "/api/admin/tournaments/:id/teams", handleAdminTournamentTeams);
+  registerProtected(app, "post", "/api/integrations/google-sheets/sync", handleGoogleSheetsSync);
+  registerProtected(app, "post", "/api/integrations/google-forms/tournament-response", handleTournamentFormResponse);
+  for (const key of Object.keys(productionOverrides)) {
+    const space = key.indexOf(" ");
+    const method = key.slice(0, space).toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
+    const path = key.slice(space + 1);
+    registerProtected(app, method, path);
+  }
+  app.get("/api/ready", async (_req, res) => {
+    try {
+      const db = await getMongoDb();
+      await db.command({ ping: 1 });
+      return res.json({ status: "ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "ok" } });
+    } catch {
+      return res.status(503).json({ status: "not_ready", timestamp: new Date().toISOString(), dependencies: { mongodb: "unavailable" } });
+    }
+  });
+  void ensureAuthIndexes().then(() => getMongoDb()).then(ensureLoginGuardIndexes).then(() => ensurePasswordResetIndexes()).then(() => ensureQrCheckInIndexes()).catch((error) => console.error("Authentication/index bootstrap failed:", error));
+  startSessionLifecycle();
+  startFnbLifecycle();
+}
