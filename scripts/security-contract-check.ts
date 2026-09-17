@@ -9,10 +9,10 @@ const requiredPublic = ["/api/health", "/api/ready", "/api/auth/register", "/api
 for (const route of requiredPublic) if (!security.includes(route)) throw new Error(`SECURITY_MISSING_PUBLIC_ROUTE:${route}`);
 if (!security.includes("/api/admin/")) throw new Error("SECURITY_MISSING_ADMIN_POLICY:/api/admin/");
 if (!security.includes("Unknown /api/*") && !security.includes("fail closed") && !security.includes("401")) throw new Error("SECURITY_FAIL_CLOSED_POLICY_NOT_DETECTABLE");
-const protectedMutations = ["/api/bookings", "/api/wallet/debit", "/api/membership/purchase", "/api/fnb/orders", "/api/tournaments/payment-verify", "/api/employee/walk-in", "/api/employee/fnb/order"];
+const protectedMutations = ["POST /api/bookings", "POST /api/wallet/debit", "POST /api/membership/purchase", "POST /api/fnb/orders", "POST /api/tournaments/payment-verify", "POST /api/employee/walk-in", "POST /api/employee/fnb/order"];
 for (const route of protectedMutations) if (!preload.includes(`\"${route}\"`)) throw new Error(`SECURITY_ROUTE_NOT_WIRED:${route}`);
 if (!preload.includes("apiSecurityPolicy")) throw new Error("SECURITY_POLICY_NOT_WIRED");
-if (!preload.includes('post("/api/integrations/google-sheets/sync"')) throw new Error("SECURITY_GOOGLE_SHEETS_SYNC_NOT_PROTECTED");
+if (!preload.includes('registerProtected(app, "post", "/api/integrations/google-sheets/sync"')) throw new Error("SECURITY_GOOGLE_SHEETS_SYNC_NOT_PROTECTED");
 if (!preload.includes("registerPasswordResetRoutes") || !preload.includes("ensurePasswordResetIndexes")) throw new Error("SECURITY_PASSWORD_RESET_NOT_WIRED");
 for (const marker of ["randomUUID", "X-Request-ID", "AUTH_RATE_LIMIT", "Retry-After", "req.ip"]) if (!security.includes(marker)) throw new Error(`SECURITY_HARDENING_MISSING:${marker}`);
 if (security.includes("x-forwarded-for") && !security.includes("req.ip")) throw new Error("SECURITY_CLIENT_IP_MUST_USE_TRUST_PROXY_CONFIGURATION");
