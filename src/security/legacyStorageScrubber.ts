@@ -22,8 +22,8 @@ const ARRAY_STATE_KEYS = [
 
 /**
  * One-time/browser-state migration. Production authentication is server-side.
- * Also remove malformed persisted array state from older builds so components
- * can never receive an object/null where an array is required and call .filter().
+ * Reset the legacy station state on startup because older builds could persist
+ * an incompatible value and cause GameOverviewScreen to call .filter() on it.
  */
 export function scrubLegacyCredentialStorage(): void {
   if (typeof window === 'undefined') return;
@@ -32,7 +32,13 @@ export function scrubLegacyCredentialStorage(): void {
     window.localStorage.removeItem(REFRESH_TOKEN_KEY);
     for (const key of LEGACY_REFRESH_KEYS) window.localStorage.removeItem(key);
 
+    // The station list is currently the known crash source. Remove the
+    // persisted copy so CafeContext falls back to INITIAL_SYSTEMS.
+    window.localStorage.removeItem('nexus_gaming_cafe_v1_systems');
+
+    // Validate the remaining persisted collections without deleting valid data.
     for (const stateKey of ARRAY_STATE_KEYS) {
+      if (stateKey === 'systems') continue;
       const key = `nexus_gaming_cafe_v1_${stateKey}`;
       const raw = window.localStorage.getItem(key);
       if (!raw) continue;
