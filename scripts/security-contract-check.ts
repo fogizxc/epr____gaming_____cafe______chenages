@@ -17,7 +17,7 @@ if (!preload.includes("registerPasswordResetRoutes") || !preload.includes("ensur
 for (const marker of ["randomUUID", "X-Request-ID", "AUTH_RATE_LIMIT", "Retry-After", "req.ip"]) if (!security.includes(marker)) throw new Error(`SECURITY_HARDENING_MISSING:${marker}`);
 if (security.includes("x-forwarded-for") && !security.includes("req.ip")) throw new Error("SECURITY_CLIENT_IP_MUST_USE_TRUST_PROXY_CONFIGURATION");
 for (const marker of ["isLoginBlocked", "recordLoginFailure", "clearLoginFailures", "Too many failed login attempts"]) if (!authRoutes.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_NOT_WIRED:${marker}`);
-for (const marker of ["MAX_FAILURES", "LOCK_MS", "auth_login_guards", "tokenHash", "password"]) if (!loginGuard.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_INCOMPLETE:${marker}`);
+for (const marker of ["MAX_FAILURES", "LOCK_MS", "auth_login_guards", "failures", "password"]) if (!loginGuard.includes(marker)) throw new Error(`SECURITY_LOGIN_GUARD_INCOMPLETE:${marker}`);
 for (const marker of ["REFRESH_COOKIE", "httpOnly: true", "CLIENT_REFRESH_MARKER", "readCookie(req, REFRESH_COOKIE)", "setRefreshCookie(res, refreshToken)", "clearRefreshCookie(res)"]) if (!authRoutes.includes(marker)) throw new Error(`SECURITY_REFRESH_COOKIE_CONTRACT_MISSING:${marker}`);
 if (!authRoutes.includes('refreshToken: CLIENT_REFRESH_MARKER')) throw new Error("SECURITY_REFRESH_TOKEN_MUST_NOT_BE_RETURNED_TO_BROWSER");
 for (const marker of ["RESET_TTL_MS", "password_reset_tokens", "crypto.randomBytes(32)", "tokenHash", "expiresAt", "usedAt", "generic", "hashPassword(password)", "revokedReason: \"password_reset\""]) if (!passwordReset.includes(marker)) throw new Error(`SECURITY_PASSWORD_RESET_INCOMPLETE:${marker}`);
